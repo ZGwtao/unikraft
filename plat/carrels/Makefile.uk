@@ -1,0 +1,54 @@
+##
+## CARRELS platform registration
+##
+$(eval $(call addplat_s,carrels,$(CONFIG_PLAT_CARRELS)))
+
+##
+## CARRELS platform library registration
+##
+$(eval $(call addplatlib,carrels,libcarrelsplat))
+
+##
+## Platform library definitions
+##
+LIBCARRELSPLAT_ASINCLUDES-y        += -I$(LIBCARRELSPLAT_BASE)/include
+LIBCARRELSPLAT_ASINCLUDES-y        += -I$(UK_PLAT_COMMON_BASE)/include
+LIBCARRELSPLAT_CINCLUDES-y         += -I$(LIBCARRELSPLAT_BASE)/include
+LIBCARRELSPLAT_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBCARRELSPLAT_CINCLUDES-y         += -I$(UK_PLAT_DRIVERS_BASE)/include
+
+LIBCARRELSPLAT_ASFLAGS             += -DCARRELSPLAT -DUK_USE_SECTION_SEGMENTS
+LIBCARRELSPLAT_CFLAGS              += -DCARRELSPLAT -DUK_USE_SECTION_SEGMENTS
+LIBCARRELSPLAT_CXXFLAGS            += -DCARRELSPLAT -DUK_USE_SECTION_SEGMENTS
+
+##
+## Default Linker script
+ifeq ($(CONFIG_ARCH_ARM_64),y)
+UK_PLAT_CARRELS_DEF_LDS            := $(CONFIG_UK_BASE)/plat/carrels/arm/link64.lds.S
+endif
+
+##
+## Architecture library definitions for arm64
+##
+ifeq ($(CONFIG_ENFORCE_W_XOR_X),y)
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/w_xor_x.c|common
+endif
+ifeq ($(CONFIG_ARM64_FEAT_PAUTH),y)
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/pauth.c|common
+endif
+
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/cache64.S|common
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/time.c|common
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/generic_timer.c|common
+
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBCARRELSPLAT_BASE)/arm/entry64.S|isr
+LIBCARRELSPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBCARRELSPLAT_BASE)/arm/setup.c
+
+LIBCARRELSPLAT_SRCS-y                          += $(LIBCARRELSPLAT_BASE)/memory.c
+ 
+LIBCARRELSPLAT_SRCS-y                          += $(UK_PLAT_COMMON_BASE)/memory.c|common
+LIBCARRELSPLAT_SRCS-y                          += $(UK_PLAT_CARRELS_DEF_LDS)
+
+LIBCARRELSPLAT_SRCS-y		 += $(UK_PLAT_COMMON_BASE)/bootinfo.c|common
+LIBCARRELSPLAT_SRCS-$(CONFIG_LIBFDT) += $(UK_PLAT_COMMON_BASE)/bootinfo_fdt.c|common
+LIBCARRELSPLAT_SRCS-y		 += $(UK_PLAT_COMMON_BASE)/bootinfo.lds.S|common
