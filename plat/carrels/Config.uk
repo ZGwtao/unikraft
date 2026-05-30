@@ -38,12 +38,13 @@ config CARRELS_BOOT_TEMPALTE_PD
 	depends on ARCH_ARM_64
 	help
 		Carrels template PD Boot Protocol
+endchoice
 
 choice
 	prompt "Virtual Machine Monitor"
 	default CARRELS_VMM_DEFAULT
 
-config CARRELS_VMM_DEAULT
+config CARRELS_VMM_DEFAULT
 	bool "DEFAULT"
 	imply LIBPL011 if LIBUKCONSOLE && ARCH_ARM_64
 	imply LIBPL011_EARLY_CONSOLE if LIBUKCONSOLE && ARCH_ARM_64

@@ -32,7 +32,7 @@
 #include <uk/arch/limits.h>
 #include <uk/plat/common/common.lds.h>
 
-#include <kvm-arm64/image.h>
+#include <carrels-arm64/image.h>
 
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH(aarch64)
