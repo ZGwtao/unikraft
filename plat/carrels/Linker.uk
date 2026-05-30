@@ -1,4 +1,4 @@
-CARRELS_LDFLAGS-y += -Wl,--entry=_libcarrelsplat_entry
+CARRELS_LDFLAGS-y += -Wl,--entry=_lib_carrels_plat_entry
 CARRELS_LDFLAGS-y += -Wl,-m,aarch64elf
 CARRELS_LDLIBS-y += -lgcc
 

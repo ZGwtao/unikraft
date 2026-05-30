@@ -47,6 +47,18 @@
 lcpu_bootstack:
 
 .text
-ENTRY(_libkvmplat_entry)
+ENTRY(_lib_carrels_plat_entry)
 	b	_ukplat_entry
-END(_libkvmplat_entry)
+END(_lib_carrels_plat_entry)
+
+.align 4
+.global bpt_unmap_mrd
+bpt_unmap_mrd:
+	.quad	0x0000000000000000		/* 0 GiB */
+	.quad	0x0000000000000000		/* 0 GiB */
+	.quad	0x0000000000000000		/* Page-aligned */
+	.quad	0x0000000100000000		/* 4 GiB */
+	.quad	0x0000000000100000		/* Page count */
+	.short	0x0000000000000000
+	.short	0x0000000000000010		/* UKPLAT_MEMRF_UNMAP */
+	.fill	36, 1, 0
