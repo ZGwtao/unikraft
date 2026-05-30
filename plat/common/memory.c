@@ -471,7 +471,12 @@ int ukplat_memregion_get(int i, struct ukplat_memregion_desc **mrd)
 	return 0;
 }
 
-#ifdef CONFIG_LIBUKPAGING
+#if CONFIG_PLAT_CARRELS
+/*
+ * CARRELS supplies ukplat_mem_init() because Microkit owns the address-space
+ * mappings and there is no boot page table described by bpt_unmap_mrd.
+ */
+#elif CONFIG_LIBUKPAGING
 int ukplat_mem_init(void)
 {
 	return uk_paging_init();

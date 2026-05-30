@@ -1,0 +1,6 @@
+$(eval $(call addlib_s,libsddfserial,$(CONFIG_LIBSDDFSERIAL)))
+$(eval $(call addlib_paramprefix,libsddfserial,sddfserial))
+
+LIBSDDFSERIAL_CINCLUDES-y  += -I$(UK_PLAT_COMMON_BASE)/include
+
+LIBSDDFSERIAL_SRCS-y += $(LIBSDDFSERIAL_BASE)/sddf_serial.c|isr

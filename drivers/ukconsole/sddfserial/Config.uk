@@ -1,0 +1,15 @@
+menuconfig LIBSDDFSERIAL
+	bool "SDDF Serial Support"
+	depends on ARCH_ARM_64
+	depends on LIBUKCONSOLE
+	depends on LIBUKMICROKIT
+
+if LIBSDDFSERIAL
+
+config LIBSDDFSERIAL_EARLY_CONSOLE
+	bool "Early console"
+	select LIBUKBOOT
+	help
+		Uses what sddf provides.
+
+endif

@@ -1,0 +1,4 @@
+menuconfig LIBUKMICROKIT
+	bool "ukmicrokit: runtime support for the seL4 Microkit"
+	help
+		libukmicrokit provides a minimal runtime to support executables that uses interfaces and low-level abstractions provided by the seL4 Microkit

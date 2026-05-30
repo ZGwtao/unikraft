@@ -14,6 +14,132 @@
 extern "C" {
 #endif
 
+/*
+ * CARRELS protection domains execute at EL0, so TPIDR_EL1 cannot be
+ * accessed. CARRELS currently supports one CPU only. Consequently, the
+ * per-CPU variable template is used directly as CPU 0's live storage.
+ */
+#if CONFIG_PLAT_CARRELS
+
+#if __ASSEMBLY__
+
+/**
+ * Read a single-CPU per-CPU variable into a register.
+ *
+ * @dst: Destination register
+ * @sym: Symbol name
+ * @tmp: Scratch register
+ */
+.macro uk_pcpuvar_arm64_ldr dst:req, sym:req, tmp:req
+	adrp	\tmp, \sym
+	add	\tmp, \tmp, #:lo12:\sym
+	ldr	\dst, [\tmp]
+.endm
+
+/**
+ * Write a register value to a single-CPU per-CPU variable.
+ *
+ * @src: Source register
+ * @sym: Symbol name
+ * @tmp1: First scratch register
+ * @tmp2: Unused compatibility scratch register
+ */
+.macro uk_pcpuvar_arm64_str src:req, sym:req, tmp1:req, tmp2:req
+	adrp	\tmp1, \sym
+	add	\tmp1, \tmp1, #:lo12:\sym
+	str	\src, [\tmp1]
+.endm
+
+/**
+ * Compute the per-CPU area offset for a CPU index.
+ *
+ * CARRELS currently uses CPU index 0 only. Keep this macro available so
+ * common ARM64 assembly still compiles, although CARRELS must not use it
+ * for SMP startup.
+ */
+.macro uk_pcpuvar_arm64_tpidrval dest:req, idx:req
+	ldr	\dest, =_uk_pcpuvar_tmpl_size
+	mul	\dest, \dest, \idx
+.endm
+
+#else /* !__ASSEMBLY__ */
+
+/*
+ * Inline-assembly forms used by common ARM64 code.
+ *
+ * These access the symbol directly instead of deriving its address from
+ * TPIDR_EL1.
+ */
+#define uk_pcpuvar_arm64_ldr(_dst, _sym, _tmp)			\
+	"adrp	" _tmp ", " STRINGIFY(_sym) "\n\t"		\
+	"add	" _tmp ", " _tmp ", #:lo12:" STRINGIFY(_sym) "\n\t" \
+	"ldr	" _dst ", [" _tmp "]"
+
+#define uk_pcpuvar_arm64_str(_src, _sym, _tmp1, _tmp2)		\
+	"adrp	" _tmp1 ", " STRINGIFY(_sym) "\n\t"		\
+	"add	" _tmp1 ", " _tmp1 ", #:lo12:" STRINGIFY(_sym) "\n\t" \
+	"str	" _src ", [" _tmp1 "]"
+
+/**
+ * Read the current CPU's copy of a per-CPU variable.
+ *
+ * CARRELS currently has one CPU, so the per-CPU symbol itself is the live
+ * CPU 0 storage.
+ */
+#define __uk_pcpuvar_arch_current_get(_sym)			\
+	({							\
+		__typeof__(_sym) __val = (_sym);			\
+								\
+		__val;						\
+	})
+
+/**
+ * Write the current CPU's copy of a per-CPU variable.
+ */
+#define __uk_pcpuvar_arch_current_set(_sym, _val)		\
+	do {							\
+		__typeof__(_sym) __val = (_val);			\
+								\
+		(_sym) = __val;					\
+		asm volatile ("" ::: "memory");			\
+	} while (0)
+
+/**
+ * Read a member from the current CPU's copy of a per-CPU structure.
+ */
+#define __uk_pcpuvar_arch_current_member_get(_sym, _member)	\
+	({							\
+		__typeof__((_sym)._member) __val =		\
+			(_sym)._member;				\
+								\
+		__val;						\
+	})
+
+/**
+ * Write a member of the current CPU's copy of a per-CPU structure.
+ */
+#define __uk_pcpuvar_arch_current_member_set(_sym, _member, _val) \
+	do {							 \
+		__typeof__((_sym)._member) __val = (_val);	 \
+								 \
+		(_sym)._member = __val;				 \
+		asm volatile ("" ::: "memory");			 \
+	} while (0)
+
+/**
+ * Get a pointer to the current CPU's copy of a per-CPU variable.
+ */
+#define __uk_pcpuvar_arch_current_ptr_get(_sym)			\
+	(&(_sym))
+
+#endif /* __ASSEMBLY__ */
+#else /* !CONFIG_PLAT_CARRELS */
+/*
+ * Normal ARM64 implementation.
+ *
+ * TPIDR_EL1 contains the base address of the current CPU's per-CPU area.
+ */
+
 #if __ASSEMBLY__
 /**
  * Read per-CPU variable into register.
@@ -220,6 +346,9 @@ extern "C" {
 	})
 
 #endif /* !__ASSEMBLY__ */
+
+#endif /* CONFIG_PLAT_CARRELS */
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

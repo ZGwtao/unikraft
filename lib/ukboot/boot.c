@@ -89,6 +89,7 @@
 #ifdef CONFIG_LIBUKSP
 #include <uk/sp.h>
 #endif
+#include <uk/microkit.h>
 #include <uk/arch/tls.h>
 #if CONFIG_LIBUKBOOT_MAINTHREAD
 #include "shutdown_req.h"
@@ -105,7 +106,11 @@
 extern char **boot_argv;
 extern int boot_argc;
 
+#if CONFIG_PLAT_CARRELS
+int uk_app_main(int argc, char *argv[]) __weak;
+#else
 int main(int argc, char *argv[]) __weak;
+#endif
 
 #if CONFIG_LIBUKBOOT_MAINTHREAD
 static __noreturn void main_thread(void *, void *);
@@ -210,6 +215,8 @@ static struct uk_alloc *heap_init()
 	 * again with the next region. As soon we have an allocator, we simply
 	 * add every subsequent region to it.
 	 */
+
+#if 0
 	ukplat_memregion_foreach(&md, UKPLAT_MEMRT_FREE, 0, 0) {
 		UK_ASSERT_VALID_FREE_MRD(md);
 
@@ -228,8 +235,11 @@ static struct uk_alloc *heap_init()
 		else
 			uk_alloc_addmem(a, (void *)md->vbase, md->len);
 	}
+#endif
 #endif /* !CONFIG_LIBUKBOOT_HEAP_BASE */
 
+// HACK
+	a = uk_alloc_init((void *)0xff018000, 0x1000 * (1 << 10));
 	return a;
 }
 
@@ -286,7 +296,6 @@ void uk_boot_entry(void)
 
 #if CONFIG_LIBUKBOOT_INITALLOC
 	uk_pr_info("Initialize memory allocator...\n");
-
 	a = heap_init();
 	if (unlikely(!a))
 		UK_CRASH("Failed to initialize memory allocator\n");
@@ -294,6 +303,28 @@ void uk_boot_entry(void)
 		rc = ukplat_memallocator_set(a);
 		if (unlikely(rc != 0))
 			UK_CRASH("Could not set the platform memory allocator\n");
+	}
+
+	sddf_printf("AUXSTACK_SIZE=%lu align=%lu\n",
+			(unsigned long)AUXSTACK_SIZE,
+			(unsigned long)UKARCH_AUXSP_ALIGN);
+
+	sddf_printf("TLS size=%lu align=%lu\n",
+			(unsigned long)ukarch_tls_area_size(),
+			(unsigned long)ukarch_tls_area_align());
+
+	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
+	struct ukplat_memregion_desc *mrd;
+
+	for (unsigned int i = 0; i < bi->mrds.count; i++) {
+		mrd = &bi->mrds.mrds[i];
+		sddf_printf("MRD[%u]: type=%u p=%lx v=%lx len=%lx flags=%x\n",
+				i,
+				mrd->type,
+				(unsigned long)mrd->pbase,
+				(unsigned long)mrd->vbase,
+				(unsigned long)mrd->len,
+				mrd->flags);
 	}
 
 	sa = uk_allocstack_init(a
@@ -352,7 +383,8 @@ void uk_boot_entry(void)
 
 	/* On most platforms the timer depend on an initialized IRQ subsystem */
 	uk_pr_info("Initialize platform time...\n");
-	ukplat_time_init();
+
+	// ukplat_time_init();
 
 #if CONFIG_LIBUKBOOT_INITSCHED
 	uk_pr_info("Initialize scheduling...\n");
@@ -458,6 +490,8 @@ int do_main(int argc, char *argv[])
 	uk_ctor_func_t *ctorfn;
 	int ret;
 
+	sddf_printf("Entering do_main()\n");
+
 	/*
 	 * Application
 	 *
@@ -509,8 +543,11 @@ int do_main(int argc, char *argv[])
 	}
 	uk_pr_info("])\n");
 #endif /* CONFIG_LIBUKPRINT_KLVL_INFO */
-
+#if CONFIG_PLAT_CARRELS
+	ret = uk_app_main(argc, argv);
+#else
 	ret = main(argc, argv);
+#endif
 	uk_pr_info("main returned %d\n", ret);
 	return ret;
 }

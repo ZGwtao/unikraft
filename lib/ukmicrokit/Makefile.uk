@@ -1,0 +1,20 @@
+$(eval $(call addlib_s,libukmicrokit,$(CONFIG_LIBUKMICROKIT)))
+
+CINCLUDES-$(CONFIG_LIBUKMICROKIT) += \
+	-I$(LIBUKMICROKIT_BASE)/include \
+	-I$(SDDF)/include \
+	-I$(SDDF)/include/microkit \
+	-I$(BOARD_DIR)/include
+
+CXXINCLUDES-$(CONFIG_LIBUKMICROKIT) += \
+	-I$(LIBUKMICROKIT_BASE)/include \
+	-I$(SDDF)/include \
+	-I$(SDDF)/include/microkit \
+	-I$(BOARD_DIR)/include
+
+LIBUKMICROKIT_SRCS-y += $(LIBUKMICROKIT_BASE)/microkit.c
+
+LDFLAGS-$(CONFIG_LIBUKMICROKIT) += \
+	$(SDDF_UTIL_LIB) $(LIBTRUSTEDLO_LIB) \
+	-L$(BOARD_DIR)/lib \
+	-lmicrokit

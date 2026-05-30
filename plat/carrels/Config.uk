@@ -1,0 +1,27 @@
+menuconfig PLAT_CARRELS
+	bool "CARRELS Microkit PD"
+	default n
+	depends on ARCH_ARM_64
+	select LIBUKDEBUG
+	select LIBUKBOOT
+	select LIBUKBITOPS
+	select LIBUKALLOC
+	select LIBUKTIMECONV
+	select LIBNOLIBC if !HAVE_LIBC
+	select LIBUKMICROKIT
+	help
+		Build a Unikraft image that runs inside a Microkit
+		protection domain.
+
+config CARRELS_BOOT_TEMPLATE_PD
+	bool
+	default y
+
+config CARRELS_USE_SDDF_SERIAL
+	bool "Enable SDDF serial"
+	default y
+	depends on LIBUKCONSOLE
+	select LIBSDDFSERIAL
+	select LIBSDDFSERIAL_EARLY_CONSOLE
+	help
+		Use the SDDF serial service as the Unikraft console backend.
