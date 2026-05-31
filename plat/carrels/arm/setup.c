@@ -33,6 +33,7 @@
 #include <uk/intctlr.h>
 #include <uk/arch/limits.h>
 #include <uk/arch/util.h>
+#include <uk/microkit.h>
 
 #if CONFIG_ENFORCE_W_XOR_X && CONFIG_LIBUKPAGING
 #include <uk/plat/common/w_xor_x.h>
