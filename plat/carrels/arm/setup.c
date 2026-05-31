@@ -56,18 +56,20 @@ __attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface;
  */
 void __no_pauth _ukplat_entry(void)
 {
-	*(int *)(0x90) = 1;
-	while (1);
 
 	struct ukplat_bootinfo *bi;
 	void *bstack;
 	int rc;
 
+	// FIXME(1): make sure the bootinfo for template PD is correct
 	bi = ukplat_bootinfo_get();
 	if (unlikely(!bi))
 		UK_CRASH("Could not retrieve bootinfo\n");
 
+	// FIXME(2): initialise uk_boot_earlytab_start?
+#if 0
 	uk_boot_early_init(bi);
+#endif
 
 	/* Allocate boot stack */
 	bstack = ukplat_memregion_alloc(__STACK_SIZE, UKPLAT_MEMRT_STACK,
@@ -76,6 +78,9 @@ void __no_pauth _ukplat_entry(void)
 	if (unlikely(!bstack))
 		UK_CRASH("Boot stack alloc failed\n");
 	bstack = (void *)((__uptr)bstack + __STACK_SIZE);
+
+	// *(int *)(0x90) = 1;
+	while (1);
 
 	/* Initialize paging */
 	rc = ukplat_mem_init();
