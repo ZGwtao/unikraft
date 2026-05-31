@@ -46,11 +46,16 @@
 #include <uk/arch/memtag.h>
 #endif /* CONFIG_HAVE_MEMTAG */
 
+#include <carrels/ossvc.h>
+
+__attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface;
+
 /* At this point we expect that the C runtime is configured and that
  * bootcode has enabled all CPU features used by compiled code.
  */
 void __no_pauth _ukplat_entry(void)
 {
+	*(int *)(0x90) = 1;
 	while (1);
 
 	struct ukplat_bootinfo *bi;
