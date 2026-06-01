@@ -49,7 +49,21 @@
 
 #include <carrels/ossvc.h>
 
-__attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface;
+__attribute__((__section__(".serial_client_config"))) serial_client_config_t serial_config;
+
+serial_queue_handle_t serial_rx_queue_handle;
+serial_queue_handle_t serial_tx_queue_handle;
+
+// interface per client payload
+__attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface = {
+    /* numbers of each interface type */
+    .t3_num = 1,
+    /* type identifiers */
+    .type3 = SERIAL_IFACE,
+    /* pointer array of each interface type */
+    .t3_iface = { (uintptr_t)&serial_config, 0, 0, 0, 0, 0, 0, 0 }
+};
+
 
 /* At this point we expect that the C runtime is configured and that
  * bootcode has enabled all CPU features used by compiled code.
@@ -70,6 +84,27 @@ void __no_pauth _ukplat_entry(void)
 #if 0
 	uk_boot_early_init(bi);
 #endif
+
+#if 1
+    assert(serial_config_check_magic(&serial_config));
+    if (serial_config.rx.queue.vaddr != NULL) {
+        serial_queue_init(&serial_rx_queue_handle, serial_config.rx.queue.vaddr, serial_config.rx.data.size, serial_config.rx.data.vaddr);
+    }
+    serial_queue_init(&serial_tx_queue_handle, serial_config.tx.queue.vaddr, serial_config.tx.data.size, serial_config.tx.data.vaddr);
+    serial_putchar_init(serial_config.tx.id, &serial_tx_queue_handle);
+#endif
+    sddf_printf(
+		"Powered by\n"
+		"o.   .o       _ _               __ _\n"
+		"Oo   Oo  ___ (_) | __ __  __ _ ' _) :_\n"
+		"oO   oO ' _ `| | |/ /  _)' _` | |_|  _)\n"
+		"oOo oOO| | | | |   (| | | (_) |  _) :_\n"
+		" OoOoO ._, ._:_:_,\\_._,  .__,_:_, \\___)\n"
+		"                 Ijiraq 0.21.0~f6f00b2d\n"
+		"Hello from Unikraft!\n"
+	);
+
+	while (1);
 
 	/* Allocate boot stack */
 	bstack = ukplat_memregion_alloc(__STACK_SIZE, UKPLAT_MEMRT_STACK,

@@ -4,6 +4,12 @@
 
 #include <uk/essentials.h>
 
+#include <microkit.h>
+
+#include <sddf/serial/queue.h>
+#include <sddf/serial/config.h>
+#include <sddf/util/printf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
