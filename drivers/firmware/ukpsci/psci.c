@@ -197,11 +197,11 @@ static const struct uk_pm_ops psci_pm_ops = {
 
 static int psci_register_pm_ops(struct ukplat_bootinfo *bi)
 {
-	int rc;
+	// int rc;
 
-	rc = uk_psci_init(bi);
-	if (unlikely(rc))
-		return rc;
+	// rc = uk_psci_init(bi);
+	// if (unlikely(rc))
+	// 	return rc;
 
 	return uk_pm_ops_register(&psci_pm_ops);
 }

@@ -49,10 +49,12 @@
 
 #include <carrels/ossvc.h>
 
-__attribute__((__section__(".serial_client_config"))) serial_client_config_t serial_config;
+extern serial_client_config_t serial_config;
 
-serial_queue_handle_t serial_rx_queue_handle;
-serial_queue_handle_t serial_tx_queue_handle;
+// __attribute__((__section__(".serial_client_config"))) serial_client_config_t serial_config;
+
+// serial_queue_handle_t serial_rx_queue_handle;
+// serial_queue_handle_t serial_tx_queue_handle;
 
 // interface per client payload
 __attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface = {
@@ -81,11 +83,11 @@ void __no_pauth _ukplat_entry(void)
 		UK_CRASH("Could not retrieve bootinfo\n");
 
 	// FIXME(2): initialise uk_boot_earlytab_start?
-#if 0
+#if 1
 	uk_boot_early_init(bi);
 #endif
 
-#if 1
+#if 0
     assert(serial_config_check_magic(&serial_config));
     if (serial_config.rx.queue.vaddr != NULL) {
         serial_queue_init(&serial_rx_queue_handle, serial_config.rx.queue.vaddr, serial_config.rx.data.size, serial_config.rx.data.vaddr);
@@ -104,7 +106,15 @@ void __no_pauth _ukplat_entry(void)
 		"Hello from Unikraft!\n"
 	);
 
-	while (1);
+	// while (1);
+
+	// FIXME(4)
+	// Stuck here
+
+	// this is for some reason not working?
+	uk_pr_info("Boot info retrieved successfully\n");
+
+	sddf_printf("From sddf_printf: Boot info retrieved successfully\n");
 
 	/* Allocate boot stack */
 	bstack = ukplat_memregion_alloc(__STACK_SIZE, UKPLAT_MEMRT_STACK,
@@ -114,6 +124,8 @@ void __no_pauth _ukplat_entry(void)
 		UK_CRASH("Boot stack alloc failed\n");
 	bstack = (void *)((__uptr)bstack + __STACK_SIZE);
 
+	// TODO: reach here
+	// also get uk_pr_info working to print something here
 	// *(int *)(0x90) = 1;
 	while (1);
 
