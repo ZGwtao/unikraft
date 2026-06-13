@@ -115,7 +115,7 @@ void __no_pauth _ukplat_entry(void)
 	uk_pr_info("Boot info retrieved successfully\n");
 
 	sddf_printf("From sddf_printf: Boot info retrieved successfully\n");
-
+#if 0
 	/* Allocate boot stack */
 	bstack = ukplat_memregion_alloc(__STACK_SIZE, UKPLAT_MEMRT_STACK,
 					UKPLAT_MEMRF_READ |
@@ -123,16 +123,20 @@ void __no_pauth _ukplat_entry(void)
 	if (unlikely(!bstack))
 		UK_CRASH("Boot stack alloc failed\n");
 	bstack = (void *)((__uptr)bstack + __STACK_SIZE);
+#else
+	bstack = (void *)((__uptr)0xffff008000 + __STACK_SIZE);
+#endif
 
 	// TODO: reach here
 	// also get uk_pr_info working to print something here
 	// *(int *)(0x90) = 1;
-	while (1);
 
 	/* Initialize paging */
 	rc = ukplat_mem_init();
 	if (unlikely(rc))
 		UK_CRASH("Could not initialize paging (%d)\n", rc);
+
+	// while (1);
 
 #if CONFIG_ENFORCE_W_XOR_X && CONFIG_LIBUKPAGING
 	enforce_w_xor_x();
@@ -160,6 +164,8 @@ void __no_pauth _ukplat_entry(void)
 	rc = uk_intctlr_probe();
 	if (unlikely(rc))
 		UK_CRASH("Could not initialize the IRQ controller: %d\n", rc);
+
+	while (1);
 
 	/* Initialize logical boot CPU */
 	rc = uk_lcpu_init(uk_lcpu_get_bsp());
