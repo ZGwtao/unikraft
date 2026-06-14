@@ -161,11 +161,11 @@ void __no_pauth _ukplat_entry(void)
 #endif /* CONFIG_LIBUKACPI */
 
 	/* Initialize interrupt controller */
-	rc = uk_intctlr_probe();
-	if (unlikely(rc))
-		UK_CRASH("Could not initialize the IRQ controller: %d\n", rc);
 
-	while (1);
+// TODO: add simulated interrupt controller driver and enable this
+	// rc = uk_intctlr_probe();
+	// if (unlikely(rc))
+	// 	UK_CRASH("Could not initialize the IRQ controller: %d\n", rc);
 
 	/* Initialize logical boot CPU */
 	rc = uk_lcpu_init(uk_lcpu_get_bsp());
@@ -183,6 +183,8 @@ void __no_pauth _ukplat_entry(void)
 	 * Switch away from the bootstrap stack as early as possible.
 	 */
 	uk_pr_info("Switch from bootstrap stack to stack @%p\n", bstack);
+
+	sddf_printf("From sddf_printf: Switch from bootstrap stack to stack @%p\n", bstack);
 
 	uk_arch_arm64_jump_to((__u64)bstack, (__u64)uk_boot_entry);
 	uk_lcpu_halt();

@@ -89,6 +89,7 @@
 #ifdef CONFIG_LIBUKSP
 #include <uk/sp.h>
 #endif
+#include <uk/microkit.h>
 #include <uk/arch/tls.h>
 #if CONFIG_LIBUKBOOT_MAINTHREAD
 #include "shutdown_req.h"
@@ -287,6 +288,8 @@ void uk_boot_entry(void)
 #if CONFIG_LIBUKBOOT_INITALLOC
 	uk_pr_info("Initialize memory allocator...\n");
 
+	sddf_printf("Initialize memory allocator...\n");
+
 	a = heap_init();
 	if (unlikely(!a))
 		UK_CRASH("Failed to initialize memory allocator\n");
@@ -342,6 +345,8 @@ void uk_boot_entry(void)
 	ukarch_auxspcb_set_uktlsp(auxspcb, uktlsp);
 	uk_lcpu_set_auxsp(auxsp);
 #endif /* CONFIG_LIBUKBOOT_INITALLOC */
+
+	while (1);
 
 #if CONFIG_LIBUKINTCTLR
 	uk_pr_info("Initialize the IRQ subsystem...\n");

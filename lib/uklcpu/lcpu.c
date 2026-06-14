@@ -73,7 +73,8 @@ int uk_lcpu_init(struct uk_lcpu *this_lcpu)
 		UK_ASSERT(this_lcpu->state == UK_LCPU_STATE_INIT);
 	}
 
-	UK_ASSERT(uk_lcpu_irqs_disabled());
+	// TODO
+	// UK_ASSERT(uk_lcpu_irqs_disabled());
 
 #if CONFIG_HAVE_SMP
 	this_lcpu->fn.fn = __NULL;
@@ -88,7 +89,9 @@ int uk_lcpu_init(struct uk_lcpu *this_lcpu)
 	 */
 	this_lcpu->state = UK_LCPU_STATE_BUSY0;
 
-	return uk_pal_except_init();
+	return 0;
+	// TODO
+	// return uk_pal_except_init();
 }
 
 static void __noreturn lcpu_halt(struct uk_lcpu *this_cpu, int error_code)
