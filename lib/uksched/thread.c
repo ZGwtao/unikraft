@@ -107,7 +107,8 @@ static int _inittab_call_term(void *argp)
 /** Iterates over registered thread initialization functions */
 static int _uk_thread_call_inittab(struct uk_thread *child)
 {
-	struct uk_thread *parent = uk_thread_current();
+	// struct uk_thread *parent = uk_thread_current();
+	struct uk_thread *parent = NULL;
 	struct uk_thread_inittab_entry *itr;
 	struct _inittab_call_init_args init_args;
 	struct _inittab_call_term_args term_args;
@@ -581,7 +582,8 @@ int uk_thread_init_fn1(struct uk_thread *t,
 	int ret;
 
 	UK_ASSERT(t);
-	UK_ASSERT(t != uk_thread_current());
+	// TODO
+	// UK_ASSERT(t != uk_thread_current());
 	UK_ASSERT(fn);
 
 	ret = _uk_thread_struct_init_alloc(t,

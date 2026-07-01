@@ -211,6 +211,8 @@ static struct uk_alloc *heap_init()
 	 * again with the next region. As soon we have an allocator, we simply
 	 * add every subsequent region to it.
 	 */
+// TODO
+#if 0
 	ukplat_memregion_foreach(&md, UKPLAT_MEMRT_FREE, 0, 0) {
 		UK_ASSERT_VALID_FREE_MRD(md);
 
@@ -229,8 +231,11 @@ static struct uk_alloc *heap_init()
 		else
 			uk_alloc_addmem(a, (void *)md->vbase, md->len);
 	}
+#endif
 #endif /* !CONFIG_LIBUKBOOT_HEAP_BASE */
 
+// HACK
+	a = uk_alloc_init((void *)0xffff018000, 0x1000 * (1 << 10));
 	return a;
 }
 
@@ -299,6 +304,8 @@ void uk_boot_entry(void)
 			UK_CRASH("Could not set the platform memory allocator\n");
 	}
 
+	sddf_printf("Heap initialized successfully\n");
+
 	sa = uk_allocstack_init(a
 #if CONFIG_LIBUKVMEM
 				, &kernel_vas, ALLOCSTACK_INITIAL_SIZE
@@ -343,21 +350,23 @@ void uk_boot_entry(void)
 	auxspcb = ukarch_auxsp_get_cb(auxsp);
 	UK_ASSERT(auxspcb);
 	ukarch_auxspcb_set_uktlsp(auxspcb, uktlsp);
-	uk_lcpu_set_auxsp(auxsp);
+	// TODO
+	// uk_lcpu_set_auxsp(auxsp);
 #endif /* CONFIG_LIBUKBOOT_INITALLOC */
 
-	while (1);
-
-#if CONFIG_LIBUKINTCTLR
-	uk_pr_info("Initialize the IRQ subsystem...\n");
-	rc = uk_intctlr_init(a);
-	if (unlikely(rc))
-		UK_CRASH("Could not initialize the IRQ subsystem\n");
-#endif /* CONFIG_LIBUKINTCTLR */
+// TODO
+// #if CONFIG_LIBUKINTCTLR
+// 	uk_pr_info("Initialize the IRQ subsystem...\n");
+// 	rc = uk_intctlr_init(a);
+// 	if (unlikely(rc))
+// 		UK_CRASH("Could not initialize the IRQ subsystem\n");
+// #endif /* CONFIG_LIBUKINTCTLR */
 
 	/* On most platforms the timer depend on an initialized IRQ subsystem */
 	uk_pr_info("Initialize platform time...\n");
-	ukplat_time_init();
+	// TODO
+	// time use dtb on ARM to initialize...
+	// ukplat_time_init();
 
 #if CONFIG_LIBUKBOOT_INITSCHED
 	uk_pr_info("Initialize scheduling...\n");
@@ -388,7 +397,10 @@ void uk_boot_entry(void)
 #endif /* CONFIG_LIBUKBOOT_MAINTHREAD */
 
 	/* Enable interrupts before starting the application */
-	uk_lcpu_enable_irq();
+	// TODO
+	// uk_lcpu_enable_irq();
+
+	while (1);
 
 	/**
 	 * Run init table
@@ -462,6 +474,8 @@ int do_main(int argc, char *argv[])
 	char **envp __maybe_unused;
 	uk_ctor_func_t *ctorfn;
 	int ret;
+
+	sddf_printf("Entering do_main()\n");
 
 	/*
 	 * Application

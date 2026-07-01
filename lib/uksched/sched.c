@@ -210,7 +210,8 @@ int uk_sched_start(struct uk_sched *s)
 	UK_ASSERT(s);
 	UK_ASSERT(s->sched_start);
 	UK_ASSERT(!s->is_started);
-	UK_ASSERT(!uk_thread_current()); /* No other thread runs */
+	// TODO
+	// UK_ASSERT(!uk_thread_current()); /* No other thread runs */
 
 	/* Allocate an `uk_thread` instance for current context
 	 * NOTE: We assume that if we have a TLS pointer, it points to
@@ -227,6 +228,7 @@ int uk_sched_start(struct uk_sched *s)
 		goto err_out;
 	}
 	main_thread->sched = s;
+	while (1);
 
 	/* Because `main_thread` acts as container for storing the current
 	 * context, it does not have IP and SP set. We have to manually mark
