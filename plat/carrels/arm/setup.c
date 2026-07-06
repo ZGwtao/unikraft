@@ -72,6 +72,9 @@ __attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface = 
  */
 void __no_pauth _ukplat_entry(void)
 {
+	// FIXME
+	microkit_notifications = 0xffffffff;
+	microkit_pps = 0xffffffff;
 
 	struct ukplat_bootinfo *bi;
 	void *bstack;
@@ -87,14 +90,6 @@ void __no_pauth _ukplat_entry(void)
 	uk_boot_early_init(bi);
 #endif
 
-#if 0
-    assert(serial_config_check_magic(&serial_config));
-    if (serial_config.rx.queue.vaddr != NULL) {
-        serial_queue_init(&serial_rx_queue_handle, serial_config.rx.queue.vaddr, serial_config.rx.data.size, serial_config.rx.data.vaddr);
-    }
-    serial_queue_init(&serial_tx_queue_handle, serial_config.tx.queue.vaddr, serial_config.tx.data.size, serial_config.tx.data.vaddr);
-    serial_putchar_init(serial_config.tx.id, &serial_tx_queue_handle);
-#endif
     sddf_printf(
 		"Powered by\n"
 		"o.   .o       _ _               __ _\n"

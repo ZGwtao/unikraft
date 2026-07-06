@@ -1,3 +1,4 @@
+#pragma once
 
 #ifndef __UK_MICROKIT_H__
 #define __UK_MICROKIT_H__
