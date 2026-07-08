@@ -235,7 +235,7 @@ static struct uk_alloc *heap_init()
 #endif /* !CONFIG_LIBUKBOOT_HEAP_BASE */
 
 // HACK
-	a = uk_alloc_init((void *)0xffff018000, 0x1000 * (1 << 10));
+	a = uk_alloc_init((void *)0xff018000, 0x1000 * (1 << 10));
 	return a;
 }
 

@@ -119,7 +119,7 @@ void __no_pauth _ukplat_entry(void)
 		UK_CRASH("Boot stack alloc failed\n");
 	bstack = (void *)((__uptr)bstack + __STACK_SIZE);
 #else
-	bstack = (void *)((__uptr)0xffff008000 + __STACK_SIZE);
+	bstack = (void *)((__uptr)0xff008000 + __STACK_SIZE);
 #endif
 
 	// TODO: reach here
