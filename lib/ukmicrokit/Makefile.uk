@@ -2,7 +2,6 @@ $(eval $(call addlib_s,libukmicrokit,$(CONFIG_LIBUKMICROKIT)))
 
 CINCLUDES-$(CONFIG_LIBUKMICROKIT) += \
 	-I$(LIBUKMICROKIT_BASE)/include \
-	-I$(LIONSOS)/include \
 	-I$(SDDF)/include \
 	-I$(SDDF)/include/microkit \
 	-I$(LIBMICROKITCO_PATH) \
@@ -10,7 +9,6 @@ CINCLUDES-$(CONFIG_LIBUKMICROKIT) += \
 
 CXXINCLUDES-$(CONFIG_LIBUKMICROKIT) += \
 	-I$(LIBUKMICROKIT_BASE)/include \
-	-I$(LIONSOS)/include \
 	-I$(SDDF)/include \
 	-I$(SDDF)/include/microkit \
 	-I$(LIBMICROKITCO_PATH) \
