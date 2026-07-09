@@ -51,20 +51,33 @@
 
 extern serial_client_config_t serial_config;
 
-// __attribute__((__section__(".serial_client_config"))) serial_client_config_t serial_config;
+__attribute__((__section__(".timer_client_config")))
+timer_client_config_t timer_config;
 
-// serial_queue_handle_t serial_rx_queue_handle;
-// serial_queue_handle_t serial_tx_queue_handle;
-
-// interface per client payload
-__attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface = {
-    /* numbers of each interface type */
+__attribute__((__section__(".pc_svc_desc")))
+const protocon_svc_desc_t ciface = {
+    .t1_num = 1,
     .t3_num = 1,
-    /* type identifiers */
+    .type1 = TIMER_IFACE,
     .type3 = SERIAL_IFACE,
-    /* pointer array of each interface type */
-    .t3_iface = { (uintptr_t)&serial_config, 0, 0, 0, 0, 0, 0, 0 }
+    .t1_iface = { (uintptr_t)&timer_config, 0, 0, 0, 0, 0, 0, 0 },
+    .t3_iface = { (uintptr_t)&serial_config, 0, 0, 0, 0, 0, 0, 0 },
 };
+
+static void register_app_early_init(void)
+{
+    trampoline_args_t *args = (trampoline_args_t *)tsldr_vm_layout.trampoline_args.base;
+    client_args_t *client_args =
+        (client_args_t *)((unsigned char *)args + sizeof(trampoline_args_t));
+
+    microkit_pps = client_args->bitmap_ppcs;
+    microkit_irqs = client_args->bitmap_irqs;
+    microkit_ioports = client_args->bitmap_ioports;
+    microkit_notifications = client_args->bitmap_notifications;
+    tsldr_miscutil_memcpy(microkit_name,
+                          client_args->dynamic_pd_name,
+                          sizeof(client_args->dynamic_pd_name));
+}
 
 
 /* At this point we expect that the C runtime is configured and that
@@ -72,9 +85,7 @@ __attribute__((__section__(".pc_svc_desc"))) const protocon_svc_desc_t ciface = 
  */
 void __no_pauth _ukplat_entry(void)
 {
-	// FIXME
-	microkit_notifications = 0xffffffff;
-	microkit_pps = 0xffffffff;
+	register_app_early_init();
 
 	struct ukplat_bootinfo *bi;
 	void *bstack;
@@ -89,7 +100,6 @@ void __no_pauth _ukplat_entry(void)
 #if 1
 	uk_boot_early_init(bi);
 #endif
-
     sddf_printf(
 		"Powered by\n"
 		"o.   .o       _ _               __ _\n"
