@@ -54,15 +54,6 @@ extern serial_client_config_t serial_config;
 __attribute__((__section__(".timer_client_config")))
 timer_client_config_t timer_config;
 
-__attribute__((__section__(".pc_svc_desc")))
-const protocon_svc_desc_t ciface = {
-    .t1_num = 1,
-    .t3_num = 1,
-    .type1 = SERVICE_DEVICE_TIMER,
-    .type3 = SERVICE_DEVICE_SERIAL,
-    .t1_iface = { (uintptr_t)&timer_config, 0, 0, 0, 0, 0, 0, 0 },
-    .t3_iface = { (uintptr_t)&serial_config, 0, 0, 0, 0, 0, 0, 0 },
-};
 
 static void register_app_early_init(void)
 {
