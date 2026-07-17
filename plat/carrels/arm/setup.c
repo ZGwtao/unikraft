@@ -48,6 +48,7 @@
 #endif /* CONFIG_HAVE_MEMTAG */
 
 #include <carrels/ossvc.h>
+#include <lions/fs/config.h>
 
 extern serial_client_config_t serial_config;
 
