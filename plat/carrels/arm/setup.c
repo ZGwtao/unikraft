@@ -53,6 +53,8 @@ extern serial_client_config_t serial_config;
 
 __attribute__((__section__(".timer_client_config")))
 timer_client_config_t timer_config;
+__attribute__((__section__(".fs_client_config")))
+fs_client_config_t fs_config;
 
 
 static void register_app_early_init(void)
