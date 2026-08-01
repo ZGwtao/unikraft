@@ -384,7 +384,7 @@ void uk_boot_entry(void)
 	/* On most platforms the timer depend on an initialized IRQ subsystem */
 	uk_pr_info("Initialize platform time...\n");
 
-	// ukplat_time_init();
+	ukplat_time_init();
 
 #if CONFIG_LIBUKBOOT_INITSCHED
 	uk_pr_info("Initialize scheduling...\n");

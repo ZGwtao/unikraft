@@ -34,19 +34,8 @@ serial_queue_handle_t serial_rx_queue_handle;
 serial_queue_handle_t serial_tx_queue_handle;
 
 sddf_channel uk_carrels_timer_channel;
-bool uk_carrels_timer_ready;
-
-
-__nsec ukplat_monotonic_clock(void)
-{
-	if (!uk_carrels_timer_ready)
-		return 0;
-
-	return (__nsec)sddf_timer_time_now(
-		uk_carrels_timer_channel
-	);
-}
-
+bool uk_carrels_timer_ready
+;
 
 #define CARRELS_HEAP_BASE 0x500000UL
 #define CARRELS_HEAP_SIZE 0x200000UL
