@@ -19,12 +19,10 @@
 #include <uk/plat/common/bootinfo.h>
 #endif /* CONFIG_LIBSDDFSERIAL_EARLY_CONSOLE */
 
-__attribute__((__section__(".serial_client_config")))
-serial_client_config_t serial_config;
+
+extern serial_client_config_t serial_config;
 
 static struct uk_console sddfserial_console;
-static serial_queue_handle_t serial_tx_queue_handle;
-static bool sddfserial_ready;
 
 /*
  * Provided by the sDDF serial putchar library.
@@ -36,22 +34,13 @@ static bool sddfserial_ready;
  */
 void _sddf_putchar(char character);
 void sddf_putchar_unbuffered(char character);
-void serial_putchar_init(sddf_channel serial_tx_ch,
-			 serial_queue_handle_t *serial_tx_queue_handle);
 
 static int sddfserial_setup(void)
 {
 	if (unlikely(!serial_config_check_magic(&serial_config)))
 		return -EINVAL;
 
-	serial_queue_init(&serial_tx_queue_handle,
-			  serial_config.tx.queue.vaddr,
-			  serial_config.tx.data.size,
-			  serial_config.tx.data.vaddr);
-
-	serial_putchar_init(serial_config.tx.id, &serial_tx_queue_handle);
-	sddfserial_ready = true;
-
+	/* the initialisation work is finished at entry.c ... */
 	return 0;
 }
 
@@ -61,9 +50,6 @@ __isr static __ssz sddfserial_out(struct uk_console *dev __unused,
 	__sz l = len;
 
 	UK_ASSERT(buf);
-
-	if (unlikely(!sddfserial_ready))
-		return 0;
 
 	while (l--)
 		_sddf_putchar(*buf++);
@@ -77,9 +63,6 @@ __isr static __ssz sddfserial_emerg_out(struct uk_console *dev __unused,
 	__sz l = len;
 
 	UK_ASSERT(buf);
-
-	if (unlikely(!sddfserial_ready))
-		return 0;
 
 	while (l--)
 		sddf_putchar_unbuffered(*buf++);

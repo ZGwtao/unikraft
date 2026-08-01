@@ -1,4 +1,3 @@
-#include <microkit.h>
 
 #include <uk/arch/types.h>
 #include <uk/pcpuvar.h>
@@ -24,15 +23,10 @@ volatile __u8 uk_carrels_irqs_disabled = 1;
 #include <uk/plat/memory.h>
 #include <uk/paging.h>
 
-#include <sddf/timer/client.h>
-#include <sddf/timer/config.h>
-#include <sddf/serial/queue.h>
-#include <sddf/serial/config.h>
+#include <uk/microkit.h>
 
-#include <sddf/util/printf.h>
-
-// __attribute__((__section__(".serial_client_config")))
-extern serial_client_config_t serial_config;
+__attribute__((__section__(".serial_client_config")))
+serial_client_config_t serial_config;
 __attribute__((__section__(".timer_client_config")))
 timer_client_config_t timer_config;
 
