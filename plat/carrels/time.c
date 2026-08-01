@@ -25,3 +25,8 @@ void time_block_until(__snsec until)
 	while ((__snsec)ukplat_monotonic_clock() < until)
 		__asm__ volatile ("" ::: "memory");
 }
+
+__nsec ukplat_wall_clock(void)
+{
+	return ukplat_monotonic_clock();
+}
