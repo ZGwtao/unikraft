@@ -33,16 +33,20 @@ timer_client_config_t timer_config;
 serial_queue_handle_t serial_rx_queue_handle;
 serial_queue_handle_t serial_tx_queue_handle;
 
-sddf_channel timer_channel;
-static int timer_ready;
+sddf_channel uk_carrels_timer_channel;
+bool uk_carrels_timer_ready;
+
 
 __nsec ukplat_monotonic_clock(void)
 {
-	if (!timer_ready)
+	if (!uk_carrels_timer_ready)
 		return 0;
 
-	return (__nsec)sddf_timer_time_now(timer_channel);
+	return (__nsec)sddf_timer_time_now(
+		uk_carrels_timer_channel
+	);
 }
+
 
 #define CARRELS_HEAP_BASE 0x500000UL
 #define CARRELS_HEAP_SIZE 0x200000UL
@@ -89,26 +93,20 @@ void init(void)
 
     assert(timer_config_check_magic(&timer_config));
 
-    timer_channel = timer_config.driver_id;
-    timer_ready = 1;
+	uk_carrels_timer_channel = timer_config.driver_id;
+	uk_carrels_timer_ready = true;
 
 	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
 	assert(bi != NULL);
 
     carrels_add_heap_mrd(bi);
 
-	sddf_printf("CARRELS: uk_boot_early_init\n");
 	uk_boot_early_init(bi);
 
-	sddf_printf("CARRELS: uk_boot_entry\n");
 	uk_boot_entry();
 }
 
 void notified(microkit_channel ch)
 {
-    if (ch == timer_channel) {
-        sddf_timer_set_timeout(timer_channel, NS_IN_S * 2);
-        uint64_t time = sddf_timer_time_now(timer_channel);
-        sddf_printf("CLIENT|INFO: timer: %lu ns\n", time);
-    }
+	(void)ch;
 }
