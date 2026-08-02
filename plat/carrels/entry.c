@@ -33,6 +33,11 @@ serial_client_config_t serial_config;
 __attribute__((__section__(".timer_client_config")))
 timer_client_config_t timer_config;
 
+#if CONFIG_LIBUKNETDEV
+__attribute__((__section__(".net_client_config")))
+net_client_config_t net_config;
+#endif
+
 serial_queue_handle_t serial_rx_queue_handle;
 serial_queue_handle_t serial_tx_queue_handle;
 

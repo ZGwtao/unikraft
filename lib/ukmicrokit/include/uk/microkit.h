@@ -11,6 +11,10 @@
 #include <sddf/serial/config.h>
 #include <sddf/util/printf.h>
 
+#include <sddf/network/queue.h>
+#include <sddf/network/config.h>
+#include <sddf/network/util.h>
+
 #include <sddf/timer/client.h>
 #include <sddf/timer/config.h>
 
