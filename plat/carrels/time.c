@@ -7,6 +7,33 @@
 #include <carrels/events.h>
 #include <carrels/timer.h>
 
+volatile __u64 uk_carrels_timer_event_count;
+
+static void carrels_timer_event_handler(microkit_channel ch, void *arg)
+{
+	(void)arg;
+
+	UK_ASSERT(ch == uk_carrels_timer_channel);
+
+	uk_carrels_timer_event_count++;
+}
+
+int uk_carrels_timer_event_init(void)
+{
+	int rc;
+
+	UK_ASSERT(uk_carrels_timer_ready);
+
+	rc = carrels_event_register(uk_carrels_timer_channel,
+				    carrels_timer_event_handler,
+				    NULL);
+	if (rc < 0)
+		uk_pr_err("CARRELS: failed to register timer channel %u: %d\n",
+			  (unsigned int)uk_carrels_timer_channel, rc);
+
+	return rc;
+}
+
 __nsec ukplat_monotonic_clock(void)
 {
 	if (!uk_carrels_timer_ready)
