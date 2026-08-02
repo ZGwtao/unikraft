@@ -49,6 +49,8 @@ struct uk_sched *uk_sched_head;
 
 __uk_pcpuvar struct uk_thread *__uk_sched_thread_current;
 
+static uk_sched_platform_poll_t platform_poll;
+
 int uk_sched_register(struct uk_sched *s)
 {
 	struct uk_sched *this = uk_sched_head;
@@ -198,6 +200,26 @@ err_free_t:
 	uk_thread_release(t);
 err_out:
 	return NULL;
+}
+
+int uk_sched_platform_poll_register(uk_sched_platform_poll_t fn)
+{
+	if (!fn)
+		return -EINVAL;
+
+	if (platform_poll)
+		return -EBUSY;
+
+	platform_poll = fn;
+	return 0;
+}
+
+bool uk_sched_platform_poll(void)
+{
+	if (!platform_poll)
+		return false;
+
+	return platform_poll();
 }
 
 int uk_sched_start(struct uk_sched *s)

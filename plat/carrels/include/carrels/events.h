@@ -4,6 +4,7 @@
 #define __CARRELS_EVENTS_H__
 
 #include <microkit.h>
+#include <stdbool.h>
 
 typedef void (*carrels_event_handler_t)(microkit_channel ch, void *arg);
 
@@ -25,5 +26,7 @@ int carrels_event_unregister(microkit_channel ch,
 void carrels_event_dispatch(microkit_channel ch);
 
 void uk_carrels_microkit_wait(void);
+bool uk_carrels_microkit_poll(void);
+void uk_carrels_microkit_poll_enable(void);
 
 #endif /* __CARRELS_EVENTS_H__ */

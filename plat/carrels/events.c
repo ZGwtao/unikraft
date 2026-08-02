@@ -12,6 +12,8 @@
 #define BADGE_FAULT_BIT    62
 #define BADGE_ENDPOINT_BIT 63
 
+static bool carrels_event_poll_enabled;
+
 struct carrels_event_entry {
 	carrels_event_handler_t handler;
 	void *arg;
@@ -19,6 +21,49 @@ struct carrels_event_entry {
 
 static struct carrels_event_entry
 	carrels_event_table[MICROKIT_MAX_CHANNELS];
+
+
+static void carrels_dispatch_badge(seL4_Word badge)
+{
+	UK_ASSERT((badge >> MICROKIT_MAX_CHANNELS) == 0);
+
+	microkit_channel c = 0;
+
+	while (badge != 0) {
+		if (badge & 1UL) {
+			notified(c);
+		}
+		badge >>= 1;
+		c++;
+	}
+}
+
+static bool carrels_handle_badge(seL4_Word badge,
+				 seL4_MessageInfo_t tag)
+{
+	seL4_Word is_fault;
+	seL4_Word is_endpoint;
+
+	(void)tag;
+
+	if (badge == 0)
+		return false;
+
+	is_endpoint = badge >> BADGE_ENDPOINT_BIT;
+	is_fault = (badge >> BADGE_FAULT_BIT) & 1UL;
+
+	if (unlikely(is_fault))
+		UK_CRASH("CARRELS: unsupported Microkit fault");
+
+	if (unlikely(is_endpoint))
+		UK_CRASH("CARRELS: unsupported Microkit PPC");
+
+	carrels_dispatch_badge(badge);
+
+	return true;
+}
+
+/* --- external interfaces --- */
 
 int carrels_event_register(microkit_channel ch,
 			   carrels_event_handler_t handler,
@@ -85,40 +130,30 @@ void carrels_event_dispatch(microkit_channel ch)
 	handler(ch, arg);
 }
 
-static void carrels_dispatch_notification_badge(seL4_Word badge)
+void uk_carrels_microkit_poll_enable(void)
 {
-	unsigned int channel = 0;
-
-	UK_ASSERT((badge >> MICROKIT_MAX_CHANNELS) == 0);
-
-	while (badge != 0) {
-		if (badge & 1UL)
-			notified((microkit_channel)channel);
-
-		badge >>= 1;
-		channel++;
-	}
+	carrels_event_poll_enabled = true;
 }
 
 void uk_carrels_microkit_wait(void)
 {
-	seL4_Word badge;
+	seL4_Word badge = 0;
 	seL4_MessageInfo_t tag;
-	seL4_Word is_fault;
-	seL4_Word is_endpoint;
 
 	tag = seL4_Recv(INPUT_CAP, &badge, REPLY_CAP);
 
-	(void)tag;
+	(void)carrels_handle_badge(badge, tag);
+}
 
-	is_endpoint = badge >> BADGE_ENDPOINT_BIT;
-	is_fault = (badge >> BADGE_FAULT_BIT) & 1UL;
+bool uk_carrels_microkit_poll(void)
+{
+	seL4_Word badge = 0;
+	seL4_MessageInfo_t tag;
 
-	if (unlikely(is_fault))
-		UK_CRASH("CARRELS: unsupported Microkit fault");
+	if (!carrels_event_poll_enabled)
+		return false;
 
-	if (unlikely(is_endpoint))
-		UK_CRASH("CARRELS: unsupported Microkit PPC");
+	tag = seL4_NBRecv(INPUT_CAP, &badge, REPLY_CAP);
 
-	carrels_dispatch_notification_badge(badge);
+	return carrels_handle_badge(badge, tag);
 }

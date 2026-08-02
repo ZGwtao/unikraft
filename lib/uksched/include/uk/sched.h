@@ -71,6 +71,8 @@ typedef void  (*uk_sched_thread_blocked_func_t)
 typedef void  (*uk_sched_thread_woken_func_t)
 		(struct uk_sched *s, struct uk_thread *t);
 
+typedef bool (*uk_sched_platform_poll_t)(void);
+
 typedef const struct uk_thread * (*uk_sched_idle_thread_func_t)
 		(struct uk_sched *s, unsigned int proc_id);
 
@@ -277,6 +279,9 @@ void uk_sched_thread_exit2(uk_thread_gc_t gc_fn, void *gc_argp) __noreturn;
 
 /* Terminates another thread */
 void uk_sched_thread_terminate(struct uk_thread *thread);
+
+int uk_sched_platform_poll_register(uk_sched_platform_poll_t fn);
+bool uk_sched_platform_poll(void);
 
 #ifdef __cplusplus
 }

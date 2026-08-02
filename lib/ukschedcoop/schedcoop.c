@@ -48,6 +48,8 @@ static void schedcoop_schedule(struct uk_sched *s)
 	if (unlikely(uk_lcpu_irqs_disabled()))
 		UK_CRASH("Must not call %s with IRQs disabled\n", __func__);
 
+	uk_sched_platform_poll();
+
 	now = ukplat_monotonic_clock();
 	prev = uk_thread_current();
 	flags = uk_lcpu_save_irqf();

@@ -96,6 +96,7 @@ void init(void)
 				rc);
 		assert(0);
 	}
+	uk_carrels_microkit_poll_enable();
 
 	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
 	assert(bi != NULL);
