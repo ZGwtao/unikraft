@@ -35,11 +35,10 @@ serial_queue_handle_t serial_rx_queue_handle;
 serial_queue_handle_t serial_tx_queue_handle;
 
 sddf_channel uk_carrels_timer_channel;
-bool uk_carrels_timer_ready
-;
+bool uk_carrels_timer_ready;
 
 #define CARRELS_HEAP_BASE 0xfff50000UL
-#define CARRELS_HEAP_SIZE 0x200000UL
+#define CARRELS_HEAP_SIZE 0x1000000UL
 
 static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 {
@@ -59,11 +58,6 @@ static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 		sddf_printf("Failed to add heap MRD: rc=%d\n", idx);
 		assert(0);
 	}
-
-	sddf_printf("Heap MRD[%d]: vbase=%lx len=%lx\n",
-		    idx,
-		    (unsigned long)heap.vbase,
-		    (unsigned long)heap.len);
 }
 
 static const char carrels_cmdline[] = "";

@@ -216,7 +216,6 @@ static struct uk_alloc *heap_init()
 	 * add every subsequent region to it.
 	 */
 
-#if 0
 	ukplat_memregion_foreach(&md, UKPLAT_MEMRT_FREE, 0, 0) {
 		UK_ASSERT_VALID_FREE_MRD(md);
 
@@ -235,11 +234,10 @@ static struct uk_alloc *heap_init()
 		else
 			uk_alloc_addmem(a, (void *)md->vbase, md->len);
 	}
-#endif
 #endif /* !CONFIG_LIBUKBOOT_HEAP_BASE */
+	if (!a)
+		UK_CRASH("No usable free memory region found\n");
 
-// HACK
-	a = uk_alloc_init((void *)0xff018000, 0x1000 * (1 << 10));
 	return a;
 }
 
@@ -303,28 +301,6 @@ void uk_boot_entry(void)
 		rc = ukplat_memallocator_set(a);
 		if (unlikely(rc != 0))
 			UK_CRASH("Could not set the platform memory allocator\n");
-	}
-
-	sddf_printf("AUXSTACK_SIZE=%lu align=%lu\n",
-			(unsigned long)AUXSTACK_SIZE,
-			(unsigned long)UKARCH_AUXSP_ALIGN);
-
-	sddf_printf("TLS size=%lu align=%lu\n",
-			(unsigned long)ukarch_tls_area_size(),
-			(unsigned long)ukarch_tls_area_align());
-
-	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
-	struct ukplat_memregion_desc *mrd;
-
-	for (unsigned int i = 0; i < bi->mrds.count; i++) {
-		mrd = &bi->mrds.mrds[i];
-		sddf_printf("MRD[%u]: type=%u p=%lx v=%lx len=%lx flags=%x\n",
-				i,
-				mrd->type,
-				(unsigned long)mrd->pbase,
-				(unsigned long)mrd->vbase,
-				(unsigned long)mrd->len,
-				mrd->flags);
 	}
 
 	sa = uk_allocstack_init(a
@@ -489,9 +465,6 @@ int do_main(int argc, char *argv[])
 	char **envp __maybe_unused;
 	uk_ctor_func_t *ctorfn;
 	int ret;
-
-	sddf_printf("Entering do_main()\n");
-
 	/*
 	 * Application
 	 *
