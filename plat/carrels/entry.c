@@ -45,7 +45,7 @@ sddf_channel uk_carrels_timer_channel;
 bool uk_carrels_timer_ready
 ;
 
-#define CARRELS_HEAP_BASE 0x500000UL
+#define CARRELS_HEAP_BASE 0xfff50000UL
 #define CARRELS_HEAP_SIZE 0x200000UL
 
 static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
@@ -72,6 +72,10 @@ static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 		    (unsigned long)heap.vbase,
 		    (unsigned long)heap.len);
 }
+
+static const char carrels_cmdline[] = "";
+// static const char carrels_cmdline[] =
+	// "nginx -p /nginx/ -c conf/nginx.conf";
 
 void init(void)
 {
@@ -105,6 +109,9 @@ void init(void)
 
 	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
 	assert(bi != NULL);
+
+	bi->cmdline = (__u64)(uintptr_t)carrels_cmdline;
+	bi->cmdline_len = strlen(carrels_cmdline);
 
     carrels_add_heap_mrd(bi);
 
