@@ -3,14 +3,16 @@
 #ifndef __UK_PLAT_PAL_AUXSP_H__
 #define __UK_PLAT_PAL_AUXSP_H__
 
-#include <uk/arch/types.h>
-#include <uk/pcpuvar.h>
+#include <uk/plat/carrels/arch/auxsp.h>
 
-#define UK_PAL_AUXSP_SYM uk_carrels_auxsp
+#define UK_PAL_AUXSP_SYM UK_PLAT_CARRELS_AUXSP_SYM
 
 #if !__ASSEMBLY__
 
-extern __uk_pcpuvar __uptr uk_carrels_auxsp;
+static inline void uk_pal_set_auxsp(__uptr auxsp)
+{
+	uk_plat_carrels_set_auxsp(auxsp);
+}
 
 #endif /* !__ASSEMBLY__ */
 

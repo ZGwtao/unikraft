@@ -11,13 +11,6 @@ __uk_pcpuvar __uptr uk_carrels_sentry;
 __uk_pcpuvar __uptr uk_carrels_sstackp;
 __uk_pcpuvar __uptr uk_carrels_sarg;
 
-void uk_pal_set_auxsp(__uptr auxsp)
-{
-	uk_carrels_auxsp = auxsp;
-}
-
-volatile __u8 uk_carrels_irqs_disabled = 1;
-
 #include <uk/boot.h>
 #include <uk/plat/common/bootinfo.h>
 #include <uk/plat/memory.h>
