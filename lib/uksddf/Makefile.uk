@@ -1,0 +1,20 @@
+$(eval $(call addlib_s,libuksddf,$(CONFIG_LIBUKSDDF)))
+
+CINCLUDES-$(CONFIG_LIBUKSDDF) += \
+	-I$(LIBUKSDDF_BASE)/include \
+	-I$(SDDF)/include \
+	-I$(SDDF)/include/microkit \
+	-I$(BOARD_DIR)/include
+
+CXXINCLUDES-$(CONFIG_LIBUKSDDF) += \
+	-I$(LIBUKSDDF_BASE)/include \
+	-I$(SDDF)/include \
+	-I$(SDDF)/include/microkit \
+	-I$(BOARD_DIR)/include
+
+LIBUKSDDF_SRCS-y += $(LIBUKSDDF_BASE)/sddf.c
+
+LDFLAGS-$(CONFIG_LIBUKSDDF) += \
+	$(SDDF_UTIL_LIB) \
+	-L$(BOARD_DIR)/lib \
+	-lmicrokit

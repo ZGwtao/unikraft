@@ -2,7 +2,7 @@
 
 #include <uk/init.h>
 #include <uk/lcpu/pm.h>
-#include <uk/microkit.h>
+#include <uk/sddf.h>
 
 #include <carrels/events.h>
 

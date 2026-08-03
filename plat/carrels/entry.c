@@ -16,7 +16,7 @@ __uk_pcpuvar __uptr uk_carrels_sarg;
 #include <uk/plat/memory.h>
 #include <uk/paging.h>
 
-#include <uk/microkit.h>
+#include <uk/sddf.h>
 
 #include <carrels/events.h>
 #include <carrels/timer.h>

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include <uk/arch/types.h>
-#include <uk/microkit.h>
+#include <uk/sddf.h>
 
 extern sddf_channel uk_carrels_timer_channel;
 extern bool uk_carrels_timer_ready;

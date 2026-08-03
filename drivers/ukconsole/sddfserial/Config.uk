@@ -1,8 +1,7 @@
 menuconfig LIBSDDFSERIAL
 	bool "SDDF Serial Support"
-	depends on ARCH_ARM_64
 	depends on LIBUKCONSOLE
-	depends on LIBUKMICROKIT
+	depends on LIBUKSDDF
 
 if LIBSDDFSERIAL
 

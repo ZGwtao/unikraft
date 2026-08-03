@@ -89,7 +89,7 @@
 #ifdef CONFIG_LIBUKSP
 #include <uk/sp.h>
 #endif
-#include <uk/microkit.h>
+#include <uk/sddf.h>
 #include <uk/arch/tls.h>
 #if CONFIG_LIBUKBOOT_MAINTHREAD
 #include "shutdown_req.h"

@@ -1,9 +1,4 @@
-/* SPDX-License-Identifier: ISC */
-/* Copyright (c) 2018 Arm Ltd.
- * Copyright (c) 2025, Unikraft GmbH and The Unikraft Authors.
- * Licensed under the BSD-3-Clause License (the "License").
- * You may not use this file except in compliance with the License.
- */
+/* SPDX-License-Identifier: BSD-3-Clause */
 
 #include <stdbool.h>
 
@@ -12,7 +7,7 @@
 #include <uk/console/driver.h>
 #include <uk/errptr.h>
 #include <uk/init.h>
-#include <uk/microkit.h>
+#include <uk/sddf.h>
 
 #if CONFIG_LIBSDDFSERIAL_EARLY_CONSOLE
 #include <uk/boot/earlytab.h>

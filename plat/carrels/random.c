@@ -8,7 +8,7 @@
 #include <uk/print.h>
 #include <uk/random/driver.h>
 
-#include <uk/microkit.h>
+#include <uk/sddf.h>
 
 static __u64 rs = 0x9e3779b97f4a7c15ULL;
 

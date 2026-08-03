@@ -1,0 +1,4 @@
+menuconfig LIBUKSDDF
+	bool "uksddf: runtime support for the seL4 Device Driver Framework"
+	help
+		libuksddf provides headers for components that use sDDF
