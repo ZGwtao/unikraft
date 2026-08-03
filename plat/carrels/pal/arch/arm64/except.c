@@ -3,12 +3,6 @@
 #include <uk/plat/pal/except.h>
 #include <uk/pal/except.h>
 
-/*
- * CARRELS currently relies on Microkit/seL4 for exception handling and does
- * not construct Unikraft exception contexts. These functions only satisfy
- * the ARM64 PAL ABI used by generic debugging code.
- */
-
 __isr int
 uk_pal_arm64_except_err_ctx_get_eid(
 	const struct uk_pal_except_err_ctx *ctx)

@@ -6,6 +6,8 @@
 #include <uk/arch/types.h>
 #include <uk/compiler.h>
 
+/* do nothing for the extended context for now... */
+
 #define UK_PAL_ECTX_SIZE	16
 #define UK_PAL_ECTX_ALIGN	16
 

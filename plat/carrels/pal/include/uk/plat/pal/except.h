@@ -3,50 +3,35 @@
 #ifndef __UK_PLAT_PAL_EXCEPT_H__
 #define __UK_PLAT_PAL_EXCEPT_H__
 
+/* this file is a dummy file because PDs have no except */
+
+#include <uk/plat/pal/arch/except.h>
+
 #include <uk/arch.h>
 #include <uk/arch/types.h>
 #include <uk/compiler.h>
 
-/*
- * Event identifiers required by uk/pal/except.h.
- * They are software event IDs, not hardware IRQ numbers.
- */
-#define UK_PAL_EXCEPT_EVENT_DEBUG		0
-#define UK_PAL_EXCEPT_EVENT_ERR_INVALID_OP	1
-#define UK_PAL_EXCEPT_EVENT_ERR_PAGE_FAULT	2
-#define UK_PAL_EXCEPT_EVENT_ERR_BUS_ERROR	3
-#define UK_PAL_EXCEPT_EVENT_ERR_MATH		4
-#define UK_PAL_EXCEPT_EVENT_ERR_SECURITY	5
-#define UK_PAL_EXCEPT_EVENT_SYSCALL		6
-#define UK_PAL_EXCEPT_EVENT_IRQ			7
-#define UK_PAL_EXCEPT_EVENT_UNHANDLED		8
-
-/*
- * Definitions required before uk/pal/arch/except.h is included by
- * the generic PAL header.
- */
-#define UK_PAL_ARM64_EXCEPT_ID_INVALID_OP \
-	UK_PAL_EXCEPT_EVENT_ERR_INVALID_OP
-#define UK_PAL_ARM64_EXCEPT_ID_DEBUG \
-	UK_PAL_EXCEPT_EVENT_DEBUG
-#define UK_PAL_ARM64_EXCEPT_ID_PAGE_FAULT \
-	UK_PAL_EXCEPT_EVENT_ERR_PAGE_FAULT
-#define UK_PAL_ARM64_EXCEPT_ID_BUS_ERROR \
-	UK_PAL_EXCEPT_EVENT_ERR_BUS_ERROR
-#define UK_PAL_ARM64_EXCEPT_ID_MATH \
-	UK_PAL_EXCEPT_EVENT_ERR_MATH
-#define UK_PAL_ARM64_EXCEPT_ID_SECURITY \
-	UK_PAL_EXCEPT_EVENT_ERR_SECURITY
-#define UK_PAL_ARM64_EXCEPT_ID_SYSCALL \
-	UK_PAL_EXCEPT_EVENT_SYSCALL
+#define UK_PAL_EXCEPT_EVENT_DEBUG \
+	UK_PAL_ARCH_EXCEPT_EVENT_DEBUG
+#define UK_PAL_EXCEPT_EVENT_ERR_INVALID_OP	\
+	UK_PAL_ARCH_EXCEPT_EVENT_ERR_INVALID_OP
+#define UK_PAL_EXCEPT_EVENT_ERR_PAGE_FAULT \
+	UK_PAL_ARCH_EXCEPT_EVENT_ERR_PAGE_FAULT
+#define UK_PAL_EXCEPT_EVENT_ERR_BUS_ERROR \
+	UK_PAL_ARCH_EXCEPT_EVENT_ERR_BUS_ERROR
+#define UK_PAL_EXCEPT_EVENT_ERR_MATH \
+	UK_PAL_ARCH_EXCEPT_EVENT_ERR_MATH
+#define UK_PAL_EXCEPT_EVENT_ERR_SECURITY \
+	UK_PAL_ARCH_EXCEPT_EVENT_ERR_SECURITY
+#define UK_PAL_EXCEPT_EVENT_SYSCALL	\
+	UK_PAL_ARCH_EXCEPT_EVENT_SYSCALL
+#define UK_PAL_EXCEPT_EVENT_IRQ	\
+	UK_PAL_ARCH_EXCEPT_EVENT_IRQ
+#define UK_PAL_EXCEPT_EVENT_UNHANDLED \
+	UK_PAL_ARCH_EXCEPT_EVENT_UNHANDLED
 
 #if !__ASSEMBLY__
 
-extern volatile __u8 uk_carrels_irqs_disabled;
-/*
- * Keep contexts opaque here. Their concrete representation is not needed
- * for the initial Microkit boot-only platform.
- */
 struct uk_pal_except_err_ctx;
 struct uk_pal_except_irq_ctx;
 struct uk_pal_regs;
@@ -151,88 +136,35 @@ uk_pal_except_irq_ctx_set_irq(
 	(void)irq;
 }
 
-/*
- * Microkit PDs execute at EL0 and cannot manipulate the architectural
- * interrupt mask directly. For the current single-CPU CARRELS platform,
- * maintain the logical IRQ state expected by Unikraft in software.
- *
- * A non-zero value means logically disabled.
- */
-
-__isr static inline void uk_pal_disable_irq(void)
-{
-	uk_carrels_irqs_disabled = 1;
-
-	/*
-	 * Prevent compiler reordering of accesses from after the logical
-	 * interrupt-disable operation to before it.
-	 */
-	__asm__ volatile ("" ::: "memory");
-}
-
-__isr static inline void uk_pal_enable_irq(void)
-{
-	/*
-	 * Complete accesses in the logical critical section before marking
-	 * interrupts enabled.
-	 */
-	__asm__ volatile ("" ::: "memory");
-
-	uk_carrels_irqs_disabled = 0;
-}
+__isr static inline void uk_pal_disable_irq(void) {}
+__isr static inline void uk_pal_enable_irq(void) {}
+__isr static inline void uk_pal_restore_irqf(unsigned long flags) {}
+__isr static inline void uk_pal_irqs_handle_pending(void) {}
+__isr static inline void uk_pal_except_push_nested(void) {}
+__isr static inline void uk_pal_except_pop_nested(void) {}
 
 __isr static inline int uk_pal_irqs_disabled(void)
 {
-	__asm__ volatile ("" ::: "memory");
-
-	return uk_carrels_irqs_disabled != 0;
+	/* the only usage is assert(irqs_disabled()); */
+	return 1;
 }
 
 __isr static inline unsigned long uk_pal_save_irqf(void)
 {
-	unsigned long flags;
-
-	flags = uk_carrels_irqs_disabled != 0;
-
-	/*
-	 * save_irqf() has save-and-disable semantics, not merely save
-	 * semantics.
-	 */
-	uk_carrels_irqs_disabled = 1;
-
-	__asm__ volatile ("" ::: "memory");
-
-	return flags;
+	/* dummy value */
+	return 0;
 }
 
-__isr static inline void uk_pal_restore_irqf(unsigned long flags)
-{
-	__asm__ volatile ("" ::: "memory");
-
-	uk_carrels_irqs_disabled = flags ? 1 : 0;
-
-	__asm__ volatile ("" ::: "memory");
-}
-
-__isr static inline void uk_pal_irqs_handle_pending(void)
-{
-}
-
-__isr static inline void uk_pal_except_push_nested(void)
-{
-}
-
-__isr static inline void uk_pal_except_pop_nested(void)
-{
-}
 
 __isr static inline __uptr uk_pal_except_get_except_stack_base(void)
 {
+	/* dummy value */
 	return 0;
 }
 
 __isr static inline int uk_pal_except_init(void)
 {
+	/* dummy value */
 	return 0;
 }
 

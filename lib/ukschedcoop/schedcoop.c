@@ -45,10 +45,12 @@ static void schedcoop_schedule(struct uk_sched *s)
 	__snsec now, min_wakeup_time;
 	unsigned long flags;
 
+#if CONFIG_PLAT_CARRELS
+	uk_sched_platform_poll();
+#else
 	if (unlikely(uk_lcpu_irqs_disabled()))
 		UK_CRASH("Must not call %s with IRQs disabled\n", __func__);
-
-	uk_sched_platform_poll();
+#endif
 
 	now = ukplat_monotonic_clock();
 	prev = uk_thread_current();
