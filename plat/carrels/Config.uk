@@ -25,3 +25,11 @@ config CARRELS_USE_SDDF_SERIAL
 	select LIBSDDFSERIAL_EARLY_CONSOLE
 	help
 		Use the SDDF serial service as the Unikraft console backend.
+
+config CARRELS_USE_SDDF_NET
+	bool "Enable sDDF network device"
+	default y
+	depends on LIBUKNETDEV
+	select DRIVER_NET_SDDF
+	help
+		Use the sDDF network service as a uk_netdev device.

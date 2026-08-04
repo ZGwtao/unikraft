@@ -1,0 +1,9 @@
+config DRIVER_NET_SDDF
+	bool
+	default n
+    depends on PLAT_CARRELS
+	depends on LIBUKSDDF
+	depends on LIBUKNETDEV
+	help
+	  Network device driver backed by the sDDF network client
+	  interface on the Carrels/Microkit platform.

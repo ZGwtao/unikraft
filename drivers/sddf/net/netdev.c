@@ -13,7 +13,7 @@
 #include <uk/netdev_driver.h>
 #include <uk/print.h>
 
-#include <carrels/netdev.h>
+#include "netdev.h"
 
 #define CARRELS_NETDEV_DRIVER_NAME	"sddf-net"
 #define CARRELS_NETDEV_MTU		UK_ETH_PAYLOAD_MAXLEN
@@ -536,4 +536,5 @@ static int carrels_netdev_init(void)
 	return 0;
 }
 
-uk_lib_initcall_prio(carrels_netdev_init, 0, UK_PRIO_LATEST);
+/* lwip stack uses UK_PRIO_LATEST and relies on netdev probing */
+uk_lib_initcall_prio(carrels_netdev_init, 0, UK_PRIO_BEFORE(UK_PRIO_LATEST));
