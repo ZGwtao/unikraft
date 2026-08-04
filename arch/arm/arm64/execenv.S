@@ -19,8 +19,9 @@
  */
 ENTRY(ukarch_execenv_load)
 	/* Mask IRQ to make sure restore would not be interrupted by IRQ */
+#if !CONFIG_PLAT_CARRELS
 	msr	daifset, #2
-
+#endif
 	/**
 	 * Assign pointer to execution environment to load (first argument).
 	 * We do this because it will be easy to keep track of it as, unlike
@@ -55,7 +56,17 @@ ENTRY(ukarch_execenv_load)
 	 * the beginning.
 	 */
 	mov	sp, x19
-
+#if CONFIG_PLAT_CARRELS
+	/*
+	 * Carrels executes at EL0 and cannot restore exception state using
+	 * SPSR_EL1, ESR_EL1, ELR_EL1 and ERET. Keep the resume address in
+	 * x17 and branch to it after restoring the remaining context.
+	 *
+	 * x17 is IP1 and caller-clobbered according to AAPCS64.
+	 */
+	ldr     x17, [sp, #16 * 15 + 8]
+	ldr     x30, [sp, #16 * 15]
+#else
 	/* Restore pstate and exception status register */
 	ldp	x22, x23, [sp, #16 * 16]
 	msr	spsr_el1, x22
@@ -64,7 +75,7 @@ ENTRY(ukarch_execenv_load)
 	/* Restore LR and exception PC */
 	ldp	x30, x21, [sp, #16 * 15]
 	msr	elr_el1, x21
-
+#endif
 	/* Restore general purpose registers */
 	ldp	x28, x29, [sp, #16 * 14]
 	ldp	x26, x27, [sp, #16 * 13]
@@ -72,7 +83,12 @@ ENTRY(ukarch_execenv_load)
 	ldp	x22, x23, [sp, #16 * 11]
 	ldp	x20, x21, [sp, #16 * 10]
 	/* Skip x18, x19 */
+#if CONFIG_PLAT_CARRELS
+    /* x17 contains the resume address */
+    ldr     x16, [sp, #16 * 8]
+#else
 	ldp	x16, x17, [sp, #16 * 8]
+#endif
 	ldp	x14, x15, [sp, #16 * 7]
 	ldp	x12, x13, [sp, #16 * 6]
 	ldp	x10, x11, [sp, #16 * 5]
@@ -89,5 +105,8 @@ ENTRY(ukarch_execenv_load)
 
 	/* Restore x18, x19 */
 	ldp	x18, x19, [x19, #16 * 9]
-
+#if CONFIG_PLAT_CARRELS
+    br      x17
+#else
 	eret
+#endif

@@ -28,6 +28,29 @@
 	 (0b0 << 5) /* T32, does not matter */ |			\
 	 (0b1101 << 6) /* D, A, I, F, only IRQ's unmasked */)
 
+#if CONFIG_PLAT_CARRELS
+#define UK_SYSCALL_PROLOGUE_IRQ_DISABLE
+#define UK_SYSCALL_PROLOGUE_IRQ_ENABLE
+#define UK_SYSCALL_PROLOGUE_SAVE_ARGS				\
+		"stp	x0, x1, [sp, #-16]!\n\t"
+#define UK_SYSCALL_PROLOGUE_STORE_SP				\
+		"add	x1, x0, #16\n\t"					\
+		"str	x1, [sp, #" STRINGIFY(UK_LCPU_REGS_OFFSETOF_SP) "]\n\t"
+#define UK_SYSCALL_PROLOGUE_RESTORE_ARGS			\
+		"ldp	x0, x1, [x0]\n\t"
+#else /* CONFIG_PLAT_CARRELS */
+#define UK_SYSCALL_PROLOGUE_IRQ_DISABLE	"msr	daifset, #2\n\t"
+#define UK_SYSCALL_PROLOGUE_IRQ_ENABLE	"msr	daifclr, #2\n\t"
+#define UK_SYSCALL_PROLOGUE_SAVE_ARGS				\
+		"msr	tpidrro_el0, x0\n\t"				\
+		"msr	sp_el0, x1\n\t"
+#define UK_SYSCALL_PROLOGUE_STORE_SP				\
+		"str	x0, [sp, #" STRINGIFY(UK_LCPU_REGS_OFFSETOF_SP) "]\n\t"
+#define UK_SYSCALL_PROLOGUE_RESTORE_ARGS			\
+		"mrs	x0, tpidrro_el0\n\t"				\
+		"mrs	x1, sp_el0\n\t"
+#endif /*CONFIG_PLAT_CARRELS */
+
 #define UK_SYSCALL_EXECENV_PROLOGUE_DEFINE(pname, fname, x, ...)	\
 	long __used							\
 	pname(UK_ARG_MAPx(x, UK_S_ARG_LONG_MAYBE_UNUSED, __VA_ARGS__));	\
@@ -35,7 +58,7 @@
 		".global " STRINGIFY(pname) "\n\t"			\
 		"" STRINGIFY(pname) ":\n\t"				\
 		"/* No IRQ's during register saving please */\n\t"	\
-		"msr	daifset, #2\n\t"				\
+		UK_SYSCALL_PROLOGUE_IRQ_DISABLE				\
 		"/* Use TPIDRRO_EL0 as a scratch register. This\n\t"	\
 		" * should be fine since the applications assume \n\t"	\
 		" * they can't change its value and, therefore, \n\t"	\
@@ -48,8 +71,7 @@
 		" * therefore, we do not have an automatically \n\t"	\
 		" * indexed stack switch.\n\t"				\
 		" */\n\t"						\
-		"msr	tpidrro_el0, x0\n\t"				\
-		"msr	sp_el0, x1\n\t"					\
+		UK_SYSCALL_PROLOGUE_SAVE_ARGS	\
 		" /* Switch to per-CPU auxiliary stack */\n\t"		\
 		uk_pcpuvar_arm64_ldr("x0", UK_LCPU_AUXSP_SYM, "x1") "\n\t"\
 		"sub	x0, x0, #" STRINGIFY(UKARCH_AUXSPCB_SIZE) "\n\t"\
@@ -63,10 +85,9 @@
 		"sub	x0, sp, x0\n\t"					\
 		"sub	sp, sp, x0\n\t"					\
 		"/* Now store old sp w.r.t. `struct uk_lcpu_regs` */\n\t"\
-		"str	x0, [sp, #" STRINGIFY(UK_LCPU_REGS_OFFSETOF_SP) "]\n\t"\
+		UK_SYSCALL_PROLOGUE_STORE_SP			\
 		"/* Restore x0, x1 from scratch registers */\n\t"\
-		"mrs	x0, tpidrro_el0\n\t"				\
-		"mrs	x1, sp_el0\n\t"				\
+		UK_SYSCALL_PROLOGUE_RESTORE_ARGS		\
 		"/* Now just store the rest of `struct uk_lcpu_regs` */\n\t"\
 		"stp	x0, x1, [sp, #16 * 0]\n\t"			\
 		"stp	x2, x3, [sp, #16 * 1]\n\t"			\
@@ -130,7 +151,7 @@
 		"add	x0, x0, #" STRINGIFY(UK_LCPU_REGS_SIZE) "\n\t"	\
 		"bl	" STRINGIFY(UK_LCPU_SYSCTX_STORE_FNSYM) "\n\t"	\
 		"mov	x0, sp\n\t"					\
-		"msr	daifclr, #2\n\t"				\
+		UK_SYSCALL_PROLOGUE_IRQ_ENABLE		\
 		"bl	" STRINGIFY(fname) "\n\t"			\
 		"/* Only restore callee preserved regs (ABI) */\n\t"	\
 		"ldr	x30, [sp, #16 * 15 + 8]\n\t"			\
