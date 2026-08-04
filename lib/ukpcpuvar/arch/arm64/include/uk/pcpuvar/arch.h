@@ -14,131 +14,25 @@
 extern "C" {
 #endif
 
-/*
- * CARRELS protection domains execute at EL0, so TPIDR_EL1 cannot be
- * accessed. CARRELS currently supports one CPU only. Consequently, the
- * per-CPU variable template is used directly as CPU 0's live storage.
- */
-#if CONFIG_PLAT_CARRELS
-
 #if __ASSEMBLY__
-
-/**
- * Read a single-CPU per-CPU variable into a register.
- *
- * @dst: Destination register
- * @sym: Symbol name
- * @tmp: Scratch register
- */
-.macro uk_pcpuvar_arm64_ldr dst:req, sym:req, tmp:req
-	adrp	\tmp, \sym
-	add	\tmp, \tmp, #:lo12:\sym
-	ldr	\dst, [\tmp]
+.macro uk_pcpuvar_arm64_current_base dst:req
+#if CONFIG_PLAT_CARRELS
+	adrp	\dst, _uk_pcpuvar_base
+	add	\dst, \dst, #:lo12:_uk_pcpuvar_base
+#else
+	mrs	\dst, tpidr_el1
+#endif
 .endm
-
-/**
- * Write a register value to a single-CPU per-CPU variable.
- *
- * @src: Source register
- * @sym: Symbol name
- * @tmp1: First scratch register
- * @tmp2: Unused compatibility scratch register
- */
-.macro uk_pcpuvar_arm64_str src:req, sym:req, tmp1:req, tmp2:req
-	adrp	\tmp1, \sym
-	add	\tmp1, \tmp1, #:lo12:\sym
-	str	\src, [\tmp1]
-.endm
-
-/**
- * Compute the per-CPU area offset for a CPU index.
- *
- * CARRELS currently uses CPU index 0 only. Keep this macro available so
- * common ARM64 assembly still compiles, although CARRELS must not use it
- * for SMP startup.
- */
-.macro uk_pcpuvar_arm64_tpidrval dest:req, idx:req
-	ldr	\dest, =_uk_pcpuvar_tmpl_size
-	mul	\dest, \dest, \idx
-.endm
-
 #else /* !__ASSEMBLY__ */
-
-/*
- * Inline-assembly forms used by common ARM64 code.
- *
- * These access the symbol directly instead of deriving its address from
- * TPIDR_EL1.
- */
-#define uk_pcpuvar_arm64_ldr(_dst, _sym, _tmp)			\
-	"adrp	" _tmp ", " STRINGIFY(_sym) "\n\t"		\
-	"add	" _tmp ", " _tmp ", #:lo12:" STRINGIFY(_sym) "\n\t" \
-	"ldr	" _dst ", [" _tmp "]"
-
-#define uk_pcpuvar_arm64_str(_src, _sym, _tmp1, _tmp2)		\
-	"adrp	" _tmp1 ", " STRINGIFY(_sym) "\n\t"		\
-	"add	" _tmp1 ", " _tmp1 ", #:lo12:" STRINGIFY(_sym) "\n\t" \
-	"str	" _src ", [" _tmp1 "]"
-
-/**
- * Read the current CPU's copy of a per-CPU variable.
- *
- * CARRELS currently has one CPU, so the per-CPU symbol itself is the live
- * CPU 0 storage.
- */
-#define __uk_pcpuvar_arch_current_get(_sym)			\
-	({							\
-		__typeof__(_sym) __val = (_sym);			\
-								\
-		__val;						\
-	})
-
-/**
- * Write the current CPU's copy of a per-CPU variable.
- */
-#define __uk_pcpuvar_arch_current_set(_sym, _val)		\
-	do {							\
-		__typeof__(_sym) __val = (_val);			\
-								\
-		(_sym) = __val;					\
-		asm volatile ("" ::: "memory");			\
-	} while (0)
-
-/**
- * Read a member from the current CPU's copy of a per-CPU structure.
- */
-#define __uk_pcpuvar_arch_current_member_get(_sym, _member)	\
-	({							\
-		__typeof__((_sym)._member) __val =		\
-			(_sym)._member;				\
-								\
-		__val;						\
-	})
-
-/**
- * Write a member of the current CPU's copy of a per-CPU structure.
- */
-#define __uk_pcpuvar_arch_current_member_set(_sym, _member, _val) \
-	do {							 \
-		__typeof__((_sym)._member) __val = (_val);	 \
-								 \
-		(_sym)._member = __val;				 \
-		asm volatile ("" ::: "memory");			 \
-	} while (0)
-
-/**
- * Get a pointer to the current CPU's copy of a per-CPU variable.
- */
-#define __uk_pcpuvar_arch_current_ptr_get(_sym)			\
-	(&(_sym))
-
-#endif /* __ASSEMBLY__ */
-#else /* !CONFIG_PLAT_CARRELS */
-/*
- * Normal ARM64 implementation.
- *
- * TPIDR_EL1 contains the base address of the current CPU's per-CPU area.
- */
+#if CONFIG_PLAT_CARRELS
+#define uk_pcpuvar_arm64_current_base(_dst)			\
+	"adrp	" _dst ", _uk_pcpuvar_base\n\t"			\
+	"add	" _dst ", " _dst ", #:lo12:_uk_pcpuvar_base\n\t"
+#else
+#define uk_pcpuvar_arm64_current_base(_dst)			\
+	"mrs	" _dst ", tpidr_el1\n\t"
+#endif
+#endif /* !__ASSEMBLY__ */
 
 #if __ASSEMBLY__
 /**
@@ -154,7 +48,7 @@ extern "C" {
 	adrp	\dst, _uk_pcpuvar_base
 	add	\dst, \dst, #:lo12:_uk_pcpuvar_base
 	sub	\tmp, \tmp, \dst
-	mrs	\dst, tpidr_el1
+	uk_pcpuvar_arm64_current_base \dst
 	ldr	\dst, [\dst, \tmp]
 .endm
 #else /* !__ASSEMBLY__ */
@@ -164,7 +58,7 @@ extern "C" {
 	"adrp	" _dst ", _uk_pcpuvar_base\n\t"				\
 	"add	" _dst ", " _dst ", #:lo12:_uk_pcpuvar_base\n\t"	\
 	"sub	" _tmp ", " _tmp ", " _dst "\n\t"			\
-	"mrs	" _dst ", tpidr_el1\n\t"				\
+	uk_pcpuvar_arm64_current_base(_dst)				\
 	"ldr	" _dst ", [" _dst ", " _tmp "]"
 #endif /* !__ASSEMBLY__ */
 
@@ -183,7 +77,7 @@ extern "C" {
 	adrp	\tmp2, _uk_pcpuvar_base
 	add	\tmp2, \tmp2, #:lo12:_uk_pcpuvar_base
 	sub	\tmp1, \tmp1, \tmp2
-	mrs	\tmp2, tpidr_el1
+	uk_pcpuvar_arm64_current_base \tmp2
 	str	\src, [\tmp2, \tmp1]
 .endm
 #else /* !__ASSEMBLY__ */
@@ -193,7 +87,7 @@ extern "C" {
 	"adrp	" _tmp2 ", _uk_pcpuvar_base\n\t"			\
 	"add	" _tmp2 ", " _tmp2 ", #:lo12:_uk_pcpuvar_base\n\t"	\
 	"sub	" _tmp1 ", " _tmp1 ", " _tmp2 "\n\t"			\
-	"mrs	" _tmp2 ", tpidr_el1\n\t"				\
+	uk_pcpuvar_arm64_current_base(_tmp2)				\
 	"str	" _src ", [" _tmp2 ", " _tmp1 "]"
 #endif /* !__ASSEMBLY__ */
 
@@ -238,7 +132,7 @@ extern "C" {
 		__typeof__(_sym) _val;					\
 									\
 		asm volatile (						\
-			"mrs	%x0, tpidr_el1\n\t"			\
+			uk_pcpuvar_arm64_current_base("%x0")		\
 			"ldr	%0, [%x0, %1]"				\
 			: "=&r" (_val)					\
 			: "r" (_offset)					\
@@ -262,7 +156,7 @@ extern "C" {
 		__u64 _tpidr;						\
 									\
 		asm volatile (						\
-			"mrs	%0, tpidr_el1\n\t"			\
+			uk_pcpuvar_arm64_current_base("%0")		\
 			"str	%1, [%0, %2]"				\
 			: "=&r" (_tpidr)				\
 			: "r" (_tmp), "r" (_offset)			\
@@ -287,7 +181,7 @@ extern "C" {
 		__typeof__(((__typeof__(_sym) *)0)->_member) _val;	\
 									\
 		asm volatile (						\
-			"mrs	%x0, tpidr_el1\n\t"			\
+			uk_pcpuvar_arm64_current_base("%x0")		\
 			"ldr	%0, [%x0, %1]"				\
 			: "=&r" (_val)					\
 			: "r" (_offset)					\
@@ -314,7 +208,7 @@ extern "C" {
 		__u64 _tpidr;						\
 									\
 		asm volatile (						\
-			"mrs	%0, tpidr_el1\n\t"			\
+			uk_pcpuvar_arm64_current_base("%0")		\
 			"str	%1, [%0, %2]"				\
 			: "=&r" (_tpidr)				\
 			: "r" (_tmp), "r" (_offset)			\
@@ -336,7 +230,7 @@ extern "C" {
 		__u64 _offset = (__u64)&(_sym) - (__u64)_uk_pcpuvar_base; \
 									\
 		asm volatile (						\
-			"mrs	%0, tpidr_el1\n\t"			\
+			uk_pcpuvar_arm64_current_base("%0")		\
 			"add	%0, %0, %1"				\
 			: "=&r" (_ptr)					\
 			: "r" (_offset)					\
@@ -346,9 +240,6 @@ extern "C" {
 	})
 
 #endif /* !__ASSEMBLY__ */
-
-#endif /* CONFIG_PLAT_CARRELS */
-
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
