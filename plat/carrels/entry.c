@@ -36,8 +36,8 @@ serial_queue_handle_t serial_tx_queue_handle;
 sddf_channel uk_carrels_timer_channel;
 bool uk_carrels_timer_ready;
 
-#define CARRELS_HEAP_BASE 0xfff50000UL
-#define CARRELS_HEAP_SIZE 0x1000000UL
+#define CARRELS_HEAP_BASE 0x200000000UL
+#define CARRELS_HEAP_SIZE 0x4000000UL
 
 static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 {
@@ -59,7 +59,20 @@ static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 	}
 }
 
-static const char carrels_cmdline[] = "";
+// static const char carrels_cmdline[] = "";
+static const char carrels_cmdline[] =
+	"sqlite /test.db "
+	"'CREATE TABLE IF NOT EXISTS users ("
+	"  id INTEGER PRIMARY KEY,"
+	"  name TEXT NOT NULL,"
+	"  score INTEGER"
+	");"
+	"DELETE FROM users;"
+	"INSERT INTO users (name, score) VALUES "
+	"  (\"Alice\", 95),"
+	"  (\"Bob\", 87),"
+	"  (\"Carol\", 91);"
+	"SELECT id, name, score FROM users ORDER BY id;'";
 // static const char carrels_cmdline[] =
 	// "nginx -p /nginx/ -c conf/nginx.conf";
 

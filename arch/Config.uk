@@ -31,7 +31,7 @@ endif
 config STACK_SIZE_PAGE_ORDER
 	int
 	prompt "Stack size page order"
-	default 4
+	default 9
 	help
 		Indirectly configures the stack size by changing the stack size page
 		order. Stack size is equal with 2^order * page size (e.g. 4KB).
