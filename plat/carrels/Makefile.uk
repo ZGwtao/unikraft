@@ -7,6 +7,7 @@ LIBCARRELSPLAT_INCLUDES = \
 	-I$(UK_PLAT_COMMON_BASE)/include \
 	-I$(CONFIG_UK_BASE)/plat/native/include \
 	-I$(CONFIG_UK_BASE)/plat/native/arch/$(CONFIG_UK_ARCH)/include \
+	-I$(LIBCARRELSPLAT_BASE)/include \
 	-I$(LIBCARRELSPLAT_BASE)/arch/$(CONFIG_UK_ARCH)/include \
 	-I$(LIBCARRELSPLAT_BASE)/pal/include \
 	-I$(LIBCARRELSPLAT_BASE)/pal/arch/$(CONFIG_UK_ARCH)/include
