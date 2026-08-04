@@ -3,10 +3,7 @@
 #ifndef __UK_PLAT_PAL_ECTX_H__
 #define __UK_PLAT_PAL_ECTX_H__
 
-#include <uk/arch/types.h>
-#include <uk/compiler.h>
-
-/* do nothing for the extended context for now... */
+#include <uk/essentials.h>
 
 #define UK_PAL_ECTX_SIZE	16
 #define UK_PAL_ECTX_ALIGN	16
@@ -20,36 +17,6 @@
 struct uk_pal_ectx {
 	__u8 dummy[UK_PAL_ECTX_SIZE];
 } __attribute__((aligned(UK_PAL_ECTX_ALIGN)));
-
-__isr static inline void
-uk_pal_ectx_load(struct uk_pal_ectx *state)
-{
-	(void)state;
-}
-
-__isr static inline void
-uk_pal_ectx_store(struct uk_pal_ectx *state)
-{
-	(void)state;
-}
-
-__isr static inline void
-uk_pal_ectx_sanitize(struct uk_pal_ectx *state)
-{
-	(void)state;
-}
-
-__isr static inline void
-uk_pal_ectx_init(struct uk_pal_ectx *state)
-{
-	(void)state;
-}
-
-__isr static inline void
-uk_pal_ectx_assert_equal(struct uk_pal_ectx *state)
-{
-	(void)state;
-}
 
 #endif /* !__ASSEMBLY__ */
 
