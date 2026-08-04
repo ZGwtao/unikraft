@@ -31,3 +31,11 @@ config CARRELS_USE_SDDF_NET
 	select DRIVER_NET_SDDF
 	help
 		Use the sDDF network service as a uk_netdev device.
+
+config CARRELS_USE_SDDF_TIMER
+	bool "Enable sDDF timer device"
+	default y
+	depends on LIBUKTIMECONV
+	select DRIVER_TIMER_SDDF
+	help
+		Use the sDDF timing service as the platform timer.

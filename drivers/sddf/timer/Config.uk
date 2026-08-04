@@ -1,0 +1,8 @@
+config DRIVER_TIMER_SDDF
+	bool
+	default n
+    depends on PLAT_CARRELS
+	depends on LIBUKSDDF
+	help
+	  Timer device driver backed by the sDDF timer client
+	  interface on the Carrels/Microkit platform.

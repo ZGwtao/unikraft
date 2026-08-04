@@ -19,7 +19,6 @@ __uk_pcpuvar __uptr uk_carrels_sarg;
 #include <uk/sddf.h>
 
 #include <carrels/events.h>
-#include <carrels/timer.h>
 
 __attribute__((__section__(".serial_client_config")))
 serial_client_config_t serial_config;
@@ -79,21 +78,6 @@ void init(void)
                       serial_config.tx.data.vaddr);
     serial_putchar_init(serial_config.tx.id, &serial_tx_queue_handle);
 
-    assert(timer_config_check_magic(&timer_config));
-
-	uk_carrels_timer_channel = timer_config.driver_id;
-	uk_carrels_timer_ready = true;
-
-	int rc;
-
-	rc = uk_carrels_timer_event_init();
-	if (rc < 0) {
-		sddf_printf("CARRELS: timer event initialisation failed: %d\n",
-				rc);
-		assert(0);
-	}
-	uk_carrels_microkit_poll_enable();
-
 	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
 	assert(bi != NULL);
 
@@ -103,6 +87,8 @@ void init(void)
     carrels_add_heap_mrd(bi);
 
 	uk_boot_early_init(bi);
+
+	uk_carrels_microkit_poll_enable();
 
 	uk_boot_entry();
 }
