@@ -15,10 +15,6 @@ menuconfig PLAT_CARRELS
 		Build a Unikraft image that runs inside a Microkit
 		protection domain.
 
-config CARRELS_BOOT_TEMPLATE_PD
-	bool
-	default y
-
 config CARRELS_USE_SDDF_SERIAL
 	bool "Enable SDDF serial"
 	default y
