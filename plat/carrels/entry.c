@@ -59,22 +59,7 @@ static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 	}
 }
 
-// static const char carrels_cmdline[] = "";
-static const char carrels_cmdline[] =
-	"sqlite /test.db "
-	"'CREATE TABLE IF NOT EXISTS users ("
-	"  id INTEGER PRIMARY KEY,"
-	"  name TEXT NOT NULL,"
-	"  score INTEGER"
-	");"
-	"DELETE FROM users;"
-	"INSERT INTO users (name, score) VALUES "
-	"  (\"Alice\", 95),"
-	"  (\"Bob\", 87),"
-	"  (\"Carol\", 91);"
-	"SELECT id, name, score FROM users ORDER BY id;'";
-// static const char carrels_cmdline[] =
-	// "nginx -p /nginx/ -c conf/nginx.conf";
+extern const char carrels_cmdline[];
 
 void init(void)
 {
