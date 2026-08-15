@@ -26,7 +26,7 @@ PHDRS
 
 SECTIONS
 {
-	. = 0x400000;
+	. = 0x2800000;
 
 	_base_addr = .;
 	_start_ram_addr = .;
