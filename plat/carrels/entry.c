@@ -59,7 +59,7 @@ static void carrels_add_heap_mrd(struct ukplat_bootinfo *bi)
 	}
 }
 
-extern const char carrels_cmdline[];
+__weak const char carrels_cmdline[] = "";
 
 void init(void)
 {
