@@ -14,10 +14,16 @@
 #include <uk/console/driver.h>
 #include <uk/file.h>
 #include <uk/file-console.h>
+#include <uk/prio.h>
+
+#if CONFIG_LIBUKFS
+#include <uk/fs/prio.h>
+#else
+#define UK_FS_PRIO_FSAVAIL UK_PRIO_AFTER(UK_PRIO_AFTER(UK_PRIO_EARLIEST))
+#endif
 
 #if CONFIG_LIBUKFS_DEVFS
 #include <uk/fs.h>
-#include <uk/fs/prio.h>
 #include <uk/devfs.h>
 #include <uk/prio.h>
 #endif /* CONFIG_LIBUKFS_DEVFS */
