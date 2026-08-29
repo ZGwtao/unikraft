@@ -262,8 +262,20 @@ static ssize_t serial_read(const struct uk_file *f,
 			*last = '\n';
 
 #if !CONFIG_LIBUKFILE_CONSOLE_IN_NOECHOBACK
-		/* Echo the input to the console (NOT stdout!) */
-		_console_out(cons, buf, bytes_read);
+		/* Echo input immediately. */
+		if (cons->ops->emerg_out) {
+			if (*last == '\n') {
+				if (bytes_read > 1)
+					uk_console_emerg_out_direct(cons, buf,
+							    bytes_read - 1);
+				uk_console_emerg_out_direct(cons, "\r\n", 2);
+			} else {
+				uk_console_emerg_out_direct(cons, buf, bytes_read);
+			}
+		} else {
+			/* Echo input when received complete string */
+			_console_out(cons, buf, bytes_read);
+		}
 #endif /* !CONFIG_LIBUKFILE_CONSOLE_IN_NOECHOBACK */
 
 		if (*last == '\n')
