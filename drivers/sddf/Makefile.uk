@@ -8,3 +8,4 @@ UK_DRIV_SDDF_BASE := $(UK_DRIV_BASE)/sddf
 
 $(eval $(call import_lib,$(UK_DRIV_SDDF_BASE)/net))
 $(eval $(call import_lib,$(UK_DRIV_SDDF_BASE)/timer))
+$(eval $(call import_lib,$(UK_DRIV_SDDF_BASE)/serial))

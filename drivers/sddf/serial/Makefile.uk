@@ -1,0 +1,4 @@
+$(eval $(call addlib_s,libsddfserialdev,$(CONFIG_DRIVER_SERIAL_SDDF)))
+LIBSDDFSERIALDEV_CINCLUDES-y += -I$(SDDF)/include -I$(SDDF)/include/microkit
+LIBSDDFSERIALDEV_CINCLUDES-y += -I$(LIBSDDFSERIALDEV_BASE)/include
+LIBSDDFSERIALDEV_SRCS-y += $(LIBSDDFSERIALDEV_BASE)/serial.c

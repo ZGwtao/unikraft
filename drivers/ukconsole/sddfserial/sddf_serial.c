@@ -7,7 +7,7 @@
 #include <uk/console/driver.h>
 #include <uk/errptr.h>
 #include <uk/init.h>
-#include <uk/sddf.h>
+#include <uk/driver/sddf/serial.h>
 
 #if CONFIG_LIBSDDFSERIAL_EARLY_CONSOLE
 #include <uk/boot/earlytab.h>
@@ -15,65 +15,32 @@
 #endif /* CONFIG_LIBSDDFSERIAL_EARLY_CONSOLE */
 
 
-extern serial_client_config_t serial_config;
-
 static struct uk_console sddfserial_console;
-
-/*
- * Provided by the sDDF serial putchar library.
- *
- * _sddf_putchar() is buffered: it updates the shared tail and notifies the
- * serial virtualiser on '\n' or when the queue is full.
- *
- * sddf_putchar_unbuffered() updates the shared tail and notifies immediately.
- */
-void _sddf_putchar(char character);
-void sddf_putchar_unbuffered(char character);
 
 static int sddfserial_setup(void)
 {
-	if (unlikely(!serial_config_check_magic(&serial_config)))
-		return -EINVAL;
-
-	/* the initialisation work is finished at entry.c ... */
-	return 0;
+	return uk_sddf_serial_init();
 }
 
 __isr static __ssz sddfserial_out(struct uk_console *dev __unused,
 				  const char *buf, __sz len)
 {
-	__sz l = len;
-
-	UK_ASSERT(buf);
-
-	while (l--)
-		_sddf_putchar(*buf++);
-
-	return len;
+	return uk_sddf_serial_write(buf, len);
 }
 
 __isr static __ssz sddfserial_emerg_out(struct uk_console *dev __unused,
 					const char *buf, __sz len)
 {
-	__sz l = len;
-
-	UK_ASSERT(buf);
-
-	while (l--)
-		sddf_putchar_unbuffered(*buf++);
-
-	return len;
+	return uk_sddf_serial_emerg_write(buf, len);
 }
 
 static __ssz sddfserial_in(struct uk_console *dev __unused,
-			   char *buf __unused, __sz len __unused)
+			   char *buf, __sz len)
 {
-	/*
-	 * Input is intentionally not implemented.  The old backend polled PL011
-	 * MMIO registers directly; this backend only exposes the sDDF serial TX
-	 * path as a Unikraft console.
-	 */
-	return 0;
+	/* Feed the tty one character at a time.  ukfile-console performs line
+	 * discipline after each console read; draining a whole RX batch here
+	 * would hide embedded CR/LF boundaries when multiple lines are pasted. */
+	return uk_sddf_serial_read_blocking(buf, len ? 1 : 0);
 }
 
 static const struct uk_console_ops sddfserial_ops = {
@@ -91,7 +58,8 @@ static int sddfserial_register_console(void)
 		return rc;
 
 	uk_console_init(&sddfserial_console, "SDDFSERIAL", &sddfserial_ops,
-			UK_CONSOLE_FLAG_STDOUT | UK_CONSOLE_FLAG_EMERG_STDOUT,
+			UK_CONSOLE_FLAG_STDOUT | UK_CONSOLE_FLAG_STDIN |
+			UK_CONSOLE_FLAG_EMERG_STDOUT,
 			UK_CONSOLE_CLASS_UART);
 	uk_console_register(&sddfserial_console);
 

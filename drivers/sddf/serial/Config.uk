@@ -1,0 +1,4 @@
+config DRIVER_SERIAL_SDDF
+	bool "sDDF serial client"
+	depends on LIBUKSDDF
+	default y if PLAT_CARRELS

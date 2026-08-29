@@ -19,9 +19,8 @@ __uk_pcpuvar __uptr uk_carrels_sarg;
 #include <uk/sddf.h>
 
 #include <carrels/events.h>
+#include <uk/driver/sddf/serial.h>
 
-__attribute__((__section__(".serial_client_config")))
-serial_client_config_t serial_config;
 __attribute__((__section__(".timer_client_config")))
 timer_client_config_t timer_config;
 
@@ -29,9 +28,6 @@ timer_client_config_t timer_config;
 __attribute__((__section__(".net_client_config")))
 net_client_config_t net_config;
 #endif
-
-serial_queue_handle_t serial_rx_queue_handle;
-serial_queue_handle_t serial_tx_queue_handle;
 
 sddf_channel uk_carrels_timer_channel;
 bool uk_carrels_timer_ready;
@@ -63,18 +59,7 @@ __weak const char carrels_cmdline[] = "";
 
 void init(void)
 {
-    assert(serial_config_check_magic(&serial_config));
-    if (serial_config.rx.queue.vaddr != NULL) {
-        serial_queue_init(&serial_rx_queue_handle,
-                          serial_config.rx.queue.vaddr,
-                          serial_config.rx.data.size,
-                          serial_config.rx.data.vaddr);
-    }
-    serial_queue_init(&serial_tx_queue_handle,
-                      serial_config.tx.queue.vaddr,
-                      serial_config.tx.data.size,
-                      serial_config.tx.data.vaddr);
-    serial_putchar_init(serial_config.tx.id, &serial_tx_queue_handle);
+    assert(uk_sddf_serial_init() == 0);
 
 	struct ukplat_bootinfo *bi = ukplat_bootinfo_get();
 	assert(bi != NULL);
