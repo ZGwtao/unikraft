@@ -4,6 +4,7 @@
 #define __UK_PLAT_PAL_SYSCTX_H__
 
 #include <uk/plat/carrels/arch/sysctx.h>
+#include <uk/plat/pal/arch/sysctx.h>
 
 #define UK_PAL_SYSCTX_LOAD_FNSYM  uk_plat_carrels_sysctx_load
 #define UK_PAL_SYSCTX_STORE_FNSYM uk_plat_carrels_sysctx_store

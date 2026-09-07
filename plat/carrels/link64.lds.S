@@ -7,8 +7,13 @@
 #include <uk/arch/limits.h>
 #include <uk/plat/common/common.lds.h>
 
+#if CONFIG_ARCH_X86_64
+OUTPUT_FORMAT("elf64-x86-64")
+OUTPUT_ARCH(i386:x86-64)
+#else
 OUTPUT_FORMAT("elf64-littleaarch64")
 OUTPUT_ARCH(aarch64)
+#endif
 ENTRY(_start)
 
 PHDRS

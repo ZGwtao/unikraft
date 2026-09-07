@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+
+#ifndef __UK_PLAT_PAL_SYSCTX_H__
+#error "Do not include this header directly"
+#endif
+
+#define UK_PAL_X86_64_SYSCTX_OFFSETOF_GSBASE \
+	UK_PAL_CARRELS_ARCH_SYSCTX_OFFSETOF_GSBASE
+#define UK_PAL_X86_64_SYSCTX_OFFSETOF_FSBASE \
+	UK_PAL_CARRELS_ARCH_SYSCTX_OFFSETOF_FSBASE

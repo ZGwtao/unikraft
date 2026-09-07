@@ -1,7 +1,7 @@
 menuconfig PLAT_CARRELS
 	bool "CARRELS Microkit PD"
 	default n
-	depends on ARCH_ARM_64
+	depends on (ARCH_ARM_64 || ARCH_X86_64)
 	select LIBUKALLOC
 	select LIBUKDEBUG
 	select LIBUKBOOT

@@ -1,5 +1,9 @@
+ifeq ($(CONFIG_ARCH_X86_64),y)
+CARRELS_LDFLAGS-y += -Wl,-m,elf_x86_64
+else ifeq ($(CONFIG_ARCH_ARM_64),y)
 CARRELS_LDFLAGS-y += -Wl,-m,aarch64elf
 CARRELS_LDLIBS-y += -lgcc
+endif
 
 CARRELS_VMM := default
 
