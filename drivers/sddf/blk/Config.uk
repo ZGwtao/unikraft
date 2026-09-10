@@ -1,0 +1,10 @@
+config DRIVER_BLK_SDDF
+	bool "sDDF block device"
+	default n
+	depends on PLAT_CARRELS
+	depends on LIBUKSDDF
+	depends on LIBUKBLKDEV
+	help
+	  Block device driver backed by the sDDF block client interface.
+	  The driver supports one asynchronous request queue and uses the
+	  client data region as a pool of 4 KiB transfer buffers.

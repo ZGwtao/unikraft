@@ -15,6 +15,10 @@
 #include <sddf/network/config.h>
 #include <sddf/network/util.h>
 
+#include <sddf/blk/config.h>
+#include <sddf/blk/queue.h>
+#include <sddf/blk/storage_info.h>
+
 #include <sddf/timer/client.h>
 #include <sddf/timer/config.h>
 

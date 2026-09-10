@@ -35,6 +35,14 @@ config CARRELS_USE_SDDF_NET
 	help
 		Use the sDDF network service as a uk_netdev device.
 
+config CARRELS_USE_SDDF_BLK
+	bool "Enable sDDF block device"
+	default y
+	depends on LIBUKBLKDEV
+	select DRIVER_BLK_SDDF
+	help
+		Use the sDDF block service as a uk_blkdev device.
+
 config CARRELS_USE_SDDF_TIMER
 	bool "Enable sDDF timer device"
 	default y

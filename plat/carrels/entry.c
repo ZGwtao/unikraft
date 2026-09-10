@@ -29,6 +29,9 @@ __attribute__((__section__(".net_client_config")))
 net_client_config_t net_config;
 #endif
 
+__attribute__((__section__(".blk_client_config")))
+blk_client_config_t blk_config;
+
 sddf_channel uk_carrels_timer_channel;
 bool uk_carrels_timer_ready;
 

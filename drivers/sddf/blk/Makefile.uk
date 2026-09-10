@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+
+$(eval $(call addlib_s,libsddfblk,$(CONFIG_DRIVER_BLK_SDDF)))
+
+LIBSDDFBLK_SRCS-y += $(LIBSDDFBLK_BASE)/blkdev.c
