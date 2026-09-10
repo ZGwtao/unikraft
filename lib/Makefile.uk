@@ -5,6 +5,7 @@
 ################################################################################
 
 $(eval $(call import_lib,$(CONFIG_UK_BASE)/lib/9pfs))
+$(eval $(call import_lib,$(CONFIG_UK_BASE)/lib/lionsfs))
 $(eval $(call import_lib,$(CONFIG_UK_BASE)/lib/devfs))
 $(eval $(call import_lib,$(CONFIG_UK_BASE)/lib/fdt))
 $(eval $(call import_lib,$(CONFIG_UK_BASE)/lib/ukgcov))

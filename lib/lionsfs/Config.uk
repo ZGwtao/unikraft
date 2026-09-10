@@ -1,0 +1,7 @@
+config LIBLIONSFS
+	bool "lionsfs: LionsOS filesystem client"
+	default n
+	depends on PLAT_CARRELS
+	depends on LIBVFSCORE
+	help
+		Expose a remote LionsOS filesystem PD through vfscore.

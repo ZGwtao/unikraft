@@ -1,0 +1,4 @@
+$(eval $(call addlib_s,liblionsfs,$(CONFIG_LIBLIONSFS)))
+
+LIBLIONSFS_SRCS-y += $(LIBLIONSFS_BASE)/lionsfs.c
+LIBLIONSFS_CINCLUDES-y += -I$(CARRELS)/include
