@@ -42,7 +42,8 @@
 extern "C" {
 #endif
 
-typedef void (*uk_ctor_func_t)();
+typedef void (*uk_ctor_func_t)(void);
+typedef void (*uk_app_ctor_func_t)(int argc, char *argv[]);
 
 /*
  * Function pointer arrays of constructors; provided by
@@ -50,8 +51,8 @@ typedef void (*uk_ctor_func_t)();
  */
 extern const uk_ctor_func_t __preinit_array_start[];
 extern const uk_ctor_func_t __preinit_array_end;
-extern const uk_ctor_func_t __init_array_start[];
-extern const uk_ctor_func_t __init_array_end;
+extern const uk_app_ctor_func_t __init_array_start[];
+extern const uk_app_ctor_func_t __init_array_end;
 extern const uk_ctor_func_t uk_ctortab_start[];
 extern const uk_ctor_func_t uk_ctortab_end;
 
@@ -91,15 +92,15 @@ extern const uk_ctor_func_t uk_ctortab_end;
  * Please note that the table may contain NULL pointer entries
  *
  * @param itr
- *   Iterator variable (uk_ctor_func_t *) which points to the individual
- *   table entries during iteration
+ *   Iterator variable which points to the individual table entries during
+ *   iteration
  * @param ctortab_start
- *   Start address of table (type: const uk_ctor_func_t[])
+ *   Start address of the constructor table
  * @param ctortab_end
- *   End address of table (type: const uk_ctor_func_t)
+ *   End address of the constructor table
  */
 #define uk_ctortab_foreach(itr, ctortab_start, ctortab_end)	\
-	for ((itr) = DECONST(uk_ctor_func_t*, ctortab_start);	\
+	for ((itr) = DECONST(__typeof__(itr), ctortab_start);	\
 	     (itr) < &(ctortab_end);				\
 	     (itr)++)
 
