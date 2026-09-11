@@ -6,7 +6,7 @@
 
 #include <carrels/events.h>
 
-static int carrels_sched_poll_init(void)
+static int carrels_sched_poll_init(struct uk_init_ctx *ctx __unused)
 {
 	int rc;
 

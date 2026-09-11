@@ -478,7 +478,7 @@ static struct carrels_netdev carrels_dev = {
 	.config = &net_config,
 };
 
-static int carrels_netdev_init(void)
+static int carrels_netdev_init(struct uk_init_ctx *ctx __unused)
 {
 	struct uk_alloc *a;
 	struct carrels_netdev *cdev = &carrels_dev;

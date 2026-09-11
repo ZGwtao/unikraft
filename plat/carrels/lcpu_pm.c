@@ -16,7 +16,7 @@ static const struct uk_lcpu_pm_ops carrels_lcpu_pm_ops = {
 	.halt_irq = carrels_halt_irq,
 };
 
-static int carrels_lcpu_pm_init(void)
+static int carrels_lcpu_pm_init(struct uk_init_ctx *ctx __unused)
 {
 	int rc;
 
