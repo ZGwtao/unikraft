@@ -372,7 +372,6 @@ static int carrels_netdev_tx_one(struct uk_netdev *dev,
 	net_buff_desc_t desc;
 	uint8_t *dst;
 	size_t pkt_len;
-	bool notify;
 	int status;
 	int rc;
 

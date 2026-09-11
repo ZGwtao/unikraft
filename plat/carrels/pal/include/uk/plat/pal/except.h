@@ -138,7 +138,10 @@ uk_pal_except_irq_ctx_set_irq(
 
 __isr static inline void uk_pal_disable_irq(void) {}
 __isr static inline void uk_pal_enable_irq(void) {}
-__isr static inline void uk_pal_restore_irqf(unsigned long flags) {}
+__isr static inline void uk_pal_restore_irqf(unsigned long flags)
+{
+	(void)flags;
+}
 __isr static inline void uk_pal_irqs_handle_pending(void) {}
 __isr static inline void uk_pal_except_push_nested(void) {}
 __isr static inline void uk_pal_except_pop_nested(void) {}
