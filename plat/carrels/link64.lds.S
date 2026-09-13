@@ -103,6 +103,12 @@ SECTIONS
 
 	DATA_SECTIONS
 
+	. = ALIGN(__PAGE_SIZE);
+	.ipc_buffer (NOLOAD) :
+	{
+		PROVIDE(__sel4_ipc_buffer_obj = .);
+	} :NONE
+
 	_end = .;
 
 	.comment 0 :
