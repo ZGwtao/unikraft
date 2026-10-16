@@ -76,7 +76,12 @@ void init(void)
 	uk_boot_entry();
 }
 
+// @gt ??
+// Required by libmicrokit's link process
+// Carrels never returns from init() and receives
+// events through its scheduler-aware event path.
+//
 void notified(microkit_channel ch)
 {
-	carrels_event_dispatch(ch);
+	(void)ch;
 }

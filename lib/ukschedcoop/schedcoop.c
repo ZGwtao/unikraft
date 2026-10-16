@@ -46,6 +46,7 @@ static void schedcoop_schedule(struct uk_sched *s)
 	unsigned long flags;
 
 #if CONFIG_PLAT_CARRELS
+	/* Platform poll callbacks must be non-blocking and must not yield. */
 	uk_sched_platform_poll();
 #else
 	if (unlikely(uk_lcpu_irqs_disabled()))
@@ -55,11 +56,6 @@ static void schedcoop_schedule(struct uk_sched *s)
 	now = ukplat_monotonic_clock();
 	prev = uk_thread_current();
 	flags = uk_lcpu_save_irqf();
-
-#if 0 //TODO
-	if (in_callback)
-		UK_CRASH("Must not call %s from a callback\n", __func__);
-#endif
 
 	/* Update execution time of current thread */
 	/* WARNING: We assume here that scheduler `s` is only responsible for
