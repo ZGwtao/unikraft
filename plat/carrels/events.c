@@ -16,8 +16,6 @@
 #define BADGE_FAULT_BIT    62
 #define BADGE_ENDPOINT_BIT 63
 
-static bool carrels_event_poll_enabled;
-
 typedef struct {
 	carrels_event_handler_t handler;
 	void *arg;
@@ -127,7 +125,8 @@ static int carrels_event_threads_init(struct uk_init_ctx *ictx __unused)
 	return 0;
 }
 
-uk_plat_initcall_prio(carrels_event_threads_init, 0, UK_PRIO_LATEST);
+/* Runs after scheduler initialization and before poll hook registration. */
+uk_plat_initcall_prio(carrels_event_threads_init, 0, UK_PRIO_BEFORE(UK_PRIO_LATEST));
 
 
 static void carrels_dispatch_badge(seL4_Word badge)
@@ -249,11 +248,6 @@ void carrels_event_dispatch(microkit_channel ch)
 	uk_semaphore_up_isr(&entry->events);
 }
 
-void uk_carrels_microkit_poll_enable(void)
-{
-	carrels_event_poll_enabled = true;
-}
-
 void uk_carrels_microkit_wait(void)
 {
 	seL4_Word badge = 0;
@@ -268,9 +262,6 @@ bool uk_carrels_microkit_poll(void)
 {
 	seL4_Word badge = 0;
 	seL4_MessageInfo_t tag;
-
-	if (!carrels_event_poll_enabled)
-		return false;
 
 	tag = seL4_NBRecv(INPUT_CAP, &badge, REPLY_CAP);
 

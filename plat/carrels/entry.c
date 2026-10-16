@@ -71,8 +71,6 @@ void init(void)
 
 	uk_boot_early_init(bi);
 
-	uk_carrels_microkit_poll_enable();
-
 	uk_boot_entry();
 }
 
