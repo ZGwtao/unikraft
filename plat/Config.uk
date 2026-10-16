@@ -74,3 +74,9 @@ config HAVE_5LEVEL_PT
 
 config HAVE_CPU_MULTI_PHASE_STARTUP
 	bool
+
+config HAVE_SCHED_EVENT_POLL
+	bool
+	help
+		Platform events must be polled explicitly from scheduler context
+		instead of being delivered asynchronously through interrupts.

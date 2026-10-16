@@ -45,7 +45,7 @@ static void schedcoop_schedule(struct uk_sched *s)
 	__snsec now, min_wakeup_time;
 	unsigned long flags;
 
-#if CONFIG_PLAT_CARRELS
+#if CONFIG_HAVE_SCHED_EVENT_POLL
 	/* Platform poll callbacks must be non-blocking and must not yield. */
 	uk_sched_platform_poll();
 #else
