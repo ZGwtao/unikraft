@@ -13,18 +13,22 @@
 #define INPUT_CAP 1
 #define REPLY_CAP 4
 
-#define BADGE_FAULT_BIT    62
-#define BADGE_ENDPOINT_BIT 63
-
+/* Each event has a thread that provides a wrapper for
+ * the event handler */
 typedef struct {
+	/* handler = fn(ch, *arg) */
 	carrels_event_handler_t handler;
 	void *arg;
+	// below are hooks for unikraft's schedcoop
 	struct uk_semaphore events;
 	struct uk_thread *thread;
+	/* event ID */
 	microkit_channel channel;
 } carrels_event_entry_t;
 
-static carrels_event_entry_t carrels_event_table[MICROKIT_MAX_CHANNELS];
+// For all registerd events, create threads for them, otherwise just entries.
+static carrels_event_entry_t
+carrels_event_table[MICROKIT_MAX_CHANNELS];
 
 static bool __carrels_event_threads_ready;
 
@@ -129,42 +133,24 @@ static int carrels_event_threads_init(struct uk_init_ctx *ictx __unused)
 uk_plat_initcall_prio(carrels_event_threads_init, 0, UK_PRIO_BEFORE(UK_PRIO_LATEST));
 
 
-static void carrels_dispatch_badge(seL4_Word badge)
+static bool carrels_dispatch_events(seL4_Word badge)
 {
-	UK_ASSERT((badge >> MICROKIT_MAX_CHANNELS) == 0);
-
 	microkit_channel c = 0;
-
-	while (badge != 0) {
-		if (badge & 1UL) {
-			carrels_event_dispatch(c);
-		}
-		badge >>= 1;
-		c++;
-	}
-}
-
-static bool carrels_handle_badge(seL4_Word badge,
-				 seL4_MessageInfo_t tag)
-{
-	seL4_Word is_fault;
-	seL4_Word is_endpoint;
-
-	(void)tag;
 
 	if (badge == 0)
 		return false;
 
-	is_endpoint = badge >> BADGE_ENDPOINT_BIT;
-	is_fault = (badge >> BADGE_FAULT_BIT) & 1UL;
+	// @gt ?? disable events from ppc/fault endpoint
+	if (unlikely(badge >> MICROKIT_MAX_CHANNELS))
+		UK_CRASH("Unikraft on Microkit does not support ppc/fault\n");
 
-	if (unlikely(is_fault))
-		UK_CRASH("CARRELS: unsupported Microkit fault");
-
-	if (unlikely(is_endpoint))
-		UK_CRASH("CARRELS: unsupported Microkit PPC");
-
-	carrels_dispatch_badge(badge);
+	while (badge != 0) {
+		if (badge & 1UL) {
+			carrels_dispatch_event_to(c);
+		}
+		badge >>= 1;
+		c++;
+	}
 
 	return true;
 }
@@ -222,7 +208,7 @@ int carrels_event_unregister(microkit_channel ch,
 	return CARRELS_EVENT_OK;
 }
 
-void carrels_event_dispatch(microkit_channel ch)
+void carrels_dispatch_event_to(microkit_channel ch)
 {
 	carrels_event_entry_t *entry;
 
@@ -251,19 +237,39 @@ void carrels_event_dispatch(microkit_channel ch)
 void uk_carrels_microkit_wait(void)
 {
 	seL4_Word badge = 0;
-	seL4_MessageInfo_t tag;
 
-	tag = seL4_Recv(INPUT_CAP, &badge, REPLY_CAP);
+	(void)seL4_Recv(INPUT_CAP, &badge, REPLY_CAP);
 
-	(void)carrels_handle_badge(badge, tag);
+	(void)carrels_dispatch_events(badge);
+}
+
+// @gt ?? wait exclusively for a specific event
+// while waiting, dispatch all the other events to their dispatcher
+// (Currently, timer event can be benefited from this...)
+void uk_carrels_microkit_wait_on(seL4_Word channel_badge)
+{
+	seL4_Word badge;
+
+	UK_ASSERT(channel_badge != 0);
+	UK_ASSERT((channel_badge & (channel_badge - 1)) == 0);
+	UK_ASSERT((channel_badge >> MICROKIT_MAX_CHANNELS) == 0);
+
+	for (;;) {
+		badge = 0;
+		(void)seL4_Recv(INPUT_CAP, &badge, REPLY_CAP);
+
+		/* Dispatch any other channels in the same notification. */
+		(void)carrels_dispatch_events(badge & ~channel_badge);
+		if (badge & channel_badge)
+			return;
+	}
 }
 
 bool uk_carrels_microkit_poll(void)
 {
 	seL4_Word badge = 0;
-	seL4_MessageInfo_t tag;
 
-	tag = seL4_NBRecv(INPUT_CAP, &badge, REPLY_CAP);
+	(void)seL4_NBRecv(INPUT_CAP, &badge, REPLY_CAP);
 
-	return carrels_handle_badge(badge, tag);
+	return carrels_dispatch_events(badge);
 }

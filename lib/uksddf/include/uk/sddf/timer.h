@@ -14,8 +14,6 @@ int uk_sddf_timer_init(sddf_channel channel);
 
 void uk_sddf_timer_set_timeout(__nsec duration);
 
-__u64 uk_sddf_timer_event_count(void);
-
 #ifdef __cplusplus
 }
 #endif

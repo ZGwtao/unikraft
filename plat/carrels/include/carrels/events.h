@@ -23,9 +23,11 @@ int carrels_event_unregister(microkit_channel ch,
 			     carrels_event_handler_t handler,
 			     void *arg);
 
-void carrels_event_dispatch(microkit_channel ch);
+void carrels_dispatch_event_to(microkit_channel ch);
 
 void uk_carrels_microkit_wait(void);
+/* Consume one channel's notification while dispatching other channels. */
+void uk_carrels_microkit_wait_on(seL4_Word channel_badge);
 bool uk_carrels_microkit_poll(void);
 
 #endif /* __CARRELS_EVENTS_H__ */

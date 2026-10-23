@@ -8,16 +8,21 @@
 
 static sddf_channel timer_channel;
 static bool timer_initialized;
-static volatile __u64 timer_event_count;
 
+// @gt ?? TODO
+// For now, the timeout event is unused and seen as a dummy implementation
+// The scheduler when needed can block waiting for the timer channel
+// and hijack the event which should have been dispatched to the timer 
+// event handler
+// Maybe for future multiplexing purpose, the timer event handler will
+// be used, but for now keep it as empty here
+//
 static void sddf_timer_event_handler(microkit_channel ch, void *arg)
 {
 	(void)arg;
 
 	UK_ASSERT(timer_initialized);
 	UK_ASSERT(ch == timer_channel);
-
-	timer_event_count++;
 }
 
 int uk_sddf_timer_init(sddf_channel channel)
@@ -49,9 +54,4 @@ void uk_sddf_timer_set_timeout(__nsec duration)
 	UK_ASSERT(timer_initialized);
 
 	sddf_timer_set_timeout(timer_channel, duration);
-}
-
-__u64 uk_sddf_timer_event_count(void)
-{
-	return timer_event_count;
 }
