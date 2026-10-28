@@ -12,67 +12,66 @@
 #include <uk/netdev.h>
 #include <uk/netdev_driver.h>
 #include <uk/print.h>
+#include <uk/sddf.h>
 
-#include "netdev.h"
-
-#define CARRELS_NETDEV_DRIVER_NAME	"sddf-net"
-#define CARRELS_NETDEV_MTU		UK_ETH_PAYLOAD_MAXLEN
-#define CARRELS_NETDEV_QUEUE_COUNT	1
 
 UK_CTASSERT(MAC802_BYTES == UK_NETDEV_HWADDR_LEN);
 
 extern net_client_config_t net_config;
 
 struct uk_netdev_rx_queue {
-	struct carrels_netdev *dev;
-	uint16_t queue_id;
+	net_queue_handle_t handle;
+	uint8_t *data;
+	microkit_channel notify_id;
 	uk_netdev_alloc_rxpkts alloc_rxpkts;
 	void *alloc_rxpkts_argp;
 };
 
 struct uk_netdev_tx_queue {
-	struct carrels_netdev *dev;
-	uint16_t queue_id;
+	net_queue_handle_t handle;
+	uint8_t *data;
+	microkit_channel notify_id;
 };
 
-struct carrels_netdev {
+typedef struct sddf_netdev {
+	/* handle of the unikraft's network device */
 	struct uk_netdev netdev;
-	const net_client_config_t *config;
-
-    net_queue_handle_t rx_handle;
-	net_queue_handle_t tx_handle;
-	net_queue_handle_t *rxq;
-	net_queue_handle_t *txq;
-
+	struct uk_hwaddr hwaddr;
+	// @gt ?? why?
 	struct uk_netdev_rx_queue rx_queue;
 	struct uk_netdev_tx_queue tx_queue;
 
-	struct uk_hwaddr hwaddr;
+	/* sddf config for network connection */
+	const net_client_config_t *config;
 
-	uint16_t mtu;
-	unsigned int configured;
-	unsigned int running;
-	int id;
-};
+	// @gt ?? even if 'set_mtu' is provided, most Unikraft network
+	//        drivers use static mtu which is given at boot, so no
+	//        need to set a pair of 'max'+'normal' mtu like virtio,
+	//        just keep a simple mtu here for bookkeeping purpose.
+	__u16 mtu;
+	/* RX promiscuous mode. */
+	__u8 promisc; // like others, disabled by default.
 
-static inline struct carrels_netdev *
-to_carrels_netdev(struct uk_netdev *dev)
-{
-	UK_ASSERT(dev);
+} sddf_netdev_t;
 
-	return __containerof(dev, struct carrels_netdev, netdev);
-}
+/* virtual network device for Unikraft provided by sddf */
+static sddf_netdev_t carrels_dev;
+
+/* the 'netdev' attribute of sddf_netdev_t matches with 'dev' */
+#define to_sddfnet_dev(dev) \
+	__containerof(dev, sddf_netdev_t, netdev)
 
 static int carrels_netdev_probe(struct uk_netdev *dev)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
 
 	UK_ASSERT(cdev->config);
-	UK_ASSERT(cdev->rxq);
-	UK_ASSERT(cdev->txq);
+	UK_ASSERT(cdev->rx_queue.handle.free);
+	UK_ASSERT(cdev->tx_queue.handle.free);
 
-	uk_pr_info("CARRELS: probing sDDF network device\n");
-
+	// @gt ?? this probe logic ensures that each sddf-backed
+	//        network device is initialised once, which is helpful
+	//        because the sddf virtualisers do not support re-init
 	return 0;
 }
 
@@ -82,12 +81,17 @@ static void carrels_netdev_info_get(struct uk_netdev *dev,
 	UK_ASSERT(dev);
 	UK_ASSERT(info);
 
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
+	UK_ASSERT(cdev->config);
+
 	memset(info, 0, sizeof(*info));
 
-	info->max_rx_queues = CARRELS_NETDEV_QUEUE_COUNT;
-	info->max_tx_queues = CARRELS_NETDEV_QUEUE_COUNT;
+	/* 1 rx/tx queue pair per sddf network client */
+	info->max_rx_queues = 1;
+	info->max_tx_queues = 1;
+
 	info->in_queue_pairs = 1;
-	info->max_mtu = CARRELS_NETDEV_MTU;
+	info->max_mtu = cdev->mtu;
 	info->nb_encap_rx = 0;
 	info->nb_encap_tx = 0;
 	info->ioalign = 16;
@@ -98,7 +102,7 @@ static int carrels_netdev_rxq_info_get(struct uk_netdev *dev,
 				       uint16_t queue_id,
 				       struct uk_netdev_queue_info *info)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
 
 	if (!info || queue_id != 0)
 		return -EINVAL;
@@ -106,7 +110,7 @@ static int carrels_netdev_rxq_info_get(struct uk_netdev *dev,
 	memset(info, 0, sizeof(*info));
 
 	info->nb_min = 1;
-	info->nb_max = (uint16_t)cdev->rxq->capacity;
+	info->nb_max = (uint16_t)cdev->rx_queue.handle.capacity;
 	info->nb_align = 1;
 	info->nb_is_power_of_two = 0;
 
@@ -117,7 +121,7 @@ static int carrels_netdev_txq_info_get(struct uk_netdev *dev,
 				       uint16_t queue_id,
 				       struct uk_netdev_queue_info *info)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
 
 	if (!info || queue_id != 0)
 		return -EINVAL;
@@ -125,57 +129,69 @@ static int carrels_netdev_txq_info_get(struct uk_netdev *dev,
 	memset(info, 0, sizeof(*info));
 
 	info->nb_min = 1;
-	info->nb_max = (uint16_t)cdev->txq->capacity;
+	info->nb_max = (uint16_t)cdev->tx_queue.handle.capacity;
 	info->nb_align = 1;
 	info->nb_is_power_of_two = 0;
 
 	return 0;
 }
 
+// Invoked via ops->configure by uk_netdev_configure.
+// It will changes the state of the netdev from unconfigured
+// into 'UK_NETDEV_CONFIGURED'
+// Ref: lib/uknetdev/netdev.c: uk_netdev_configure
 static int carrels_netdev_configure(struct uk_netdev *dev,
 				    const struct uk_netdev_conf *conf)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	(void)dev;
+	// TODO
+	// this function can be a checkpoint for resetting sddf
+	// network virt-serving client if the unikernel is reboot.
 
-	if (!conf)
+	UK_ASSERT(conf);
+
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
+
+	/* Ensure each rx/tx path has only one queue */
+	if (conf->nb_rx_queues != 1 || conf->nb_tx_queues != 1)
 		return -EINVAL;
 
-	if (conf->nb_rx_queues != CARRELS_NETDEV_QUEUE_COUNT ||
-	    conf->nb_tx_queues != CARRELS_NETDEV_QUEUE_COUNT)
-		return -EINVAL;
-
+	/* Disable large-receive-offload, as sddf API doesn't support */
 	if (conf->lro)
 		return -ENOTSUP;
-
-	cdev->configured = 1;
-
-	uk_pr_info("CARRELS: configured sDDF netdev with one RX and one TX queue\n");
 
 	return 0;
 }
 
+static int carrels_netdev_queue_conf_valid(const void *conf, __u16 queue_id,
+					  __u16 nb_desc, uint32_t capacity)
+{
+	/* sDDF queue capacity is fixed; zero requests the driver's default. */
+	return conf && queue_id == 0 && // queue_id is fixed (only 1 queue per tx/rx)
+		(nb_desc == 0 || nb_desc == capacity);
+}
+
 static struct uk_netdev_rx_queue *
 carrels_netdev_rxq_configure(struct uk_netdev *dev,
-			     uint16_t queue_id,
-			     uint16_t nb_desc,
+			     __u16 queue_id, __u16 nb_desc,
 			     struct uk_netdev_rxqueue_conf *conf)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	UK_ASSERT(conf);
+	UK_ASSERT(dev);
 
-	if (!conf || queue_id != 0)
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
+
+	if (!carrels_netdev_queue_conf_valid(conf, queue_id, nb_desc,
+					    cdev->rx_queue.handle.capacity))
 		return ERR2PTR(-EINVAL);
 
+	// User callback for allocating rx buffers (in shape of 'uk_netbuf')
+	// so that the drivers can put the package into location specified
+	// by the user (e.g., a network stack).
+	// Ref: $(catalog)/repos/libs/lwip/uknetdev.c: netif_alloc_rxpkts
 	if (!conf->alloc_rxpkts)
 		return ERR2PTR(-EINVAL);
 
-	if (nb_desc == 0)
-		nb_desc = (uint16_t)cdev->rxq->capacity;
-
-	if (nb_desc > cdev->rxq->capacity)
-		return ERR2PTR(-EINVAL);
-
-	cdev->rx_queue.dev = cdev;
-	cdev->rx_queue.queue_id = queue_id;
 	cdev->rx_queue.alloc_rxpkts = conf->alloc_rxpkts;
 	cdev->rx_queue.alloc_rxpkts_argp = conf->alloc_rxpkts_argp;
 
@@ -184,62 +200,198 @@ carrels_netdev_rxq_configure(struct uk_netdev *dev,
 
 static struct uk_netdev_tx_queue *
 carrels_netdev_txq_configure(struct uk_netdev *dev,
-			     uint16_t queue_id,
-			     uint16_t nb_desc,
+			     __u16 queue_id, __u16 nb_desc,
 			     struct uk_netdev_txqueue_conf *conf)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	UK_ASSERT(conf);
+	UK_ASSERT(dev);
 
-	if (!conf || queue_id != 0)
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
+
+	if (!carrels_netdev_queue_conf_valid(conf, queue_id, nb_desc,
+					    cdev->tx_queue.handle.capacity))
 		return ERR2PTR(-EINVAL);
 
-	if (nb_desc == 0)
-		nb_desc = (uint16_t)cdev->txq->capacity;
-
-	if (nb_desc > cdev->txq->capacity)
-		return ERR2PTR(-EINVAL);
-
-	cdev->tx_queue.dev = cdev;
-	cdev->tx_queue.queue_id = queue_id;
-
-	return (struct uk_netdev_tx_queue *)&cdev->tx_queue;
+	return &cdev->tx_queue;
 }
 
+// Invoked via ops->start by uk_netdev_start, which checks
+// whether the netdev is configured (UK_NETDEV_CONFIGURED),
+// and set the netdev afterwards.
+// Once finishes, the netdev state goes to RUNNING
+// Ref: lib/uknetdev/netdev.c: uk_netdev_start
 static int carrels_netdev_start(struct uk_netdev *dev)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
-
-	if (!cdev->configured)
-		return -EINVAL;
-
-	cdev->running = 1;
-
-	uk_pr_info("CARRELS: sDDF netdev started\n");
-
+	(void)dev;
+	// TODO
+	// this can be extended as a checkpoint (for reset)
+	// if the sddf virt supports re-configuration &
+	// reconnection one day.
 	return 0;
 }
 
 static const struct uk_hwaddr *
 carrels_netdev_hwaddr_get(struct uk_netdev *dev)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
+	UK_ASSERT(dev);
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
 
 	return &cdev->hwaddr;
 }
 
-static uint16_t carrels_netdev_mtu_get(struct uk_netdev *dev)
+static __u16 carrels_netdev_mtu_get(struct uk_netdev *dev)
 {
-	struct carrels_netdev *cdev = to_carrels_netdev(dev);
-
+	UK_ASSERT(dev);
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
 	return cdev->mtu;
 }
 
-static unsigned int carrels_netdev_promiscuous_get(struct uk_netdev *dev)
+static unsigned carrels_netdev_promisc_get(struct uk_netdev *dev)
 {
-	(void)dev;
-
-	return 0;
+	UK_ASSERT(dev);
+	sddf_netdev_t *cdev = to_sddfnet_dev(dev);
+	return cdev->promisc;
 }
+
+static int carrels_rx_buffer_valid(const net_buff_desc_t *desc, const __u64 capacity)
+{
+	/* Validate payload length */
+	if (desc->len < UK_ETH_HDR_UNTAGGED_LEN ||
+	    desc->len > NET_BUFFER_SIZE) {
+		uk_pr_info("CARRELS RX: invalid frame length %u\n", desc->len);
+		return 0;
+	}
+	/* Validate payload alignment and range */
+	return desc->io_or_offset % NET_BUFFER_SIZE == 0 &&
+		desc->io_or_offset < capacity * NET_BUFFER_SIZE;
+}
+
+static struct uk_netbuf *
+carrels_rx_alloc_netbuf(struct uk_netdev_rx_queue *queue)
+{
+	struct uk_netbuf *nb = NULL;
+
+	if (unlikely(queue->alloc_rxpkts(queue->alloc_rxpkts_argp, &nb, 1) != 1 ||
+		     !nb)) {
+		uk_pr_info("CARRELS RX: netbuf allocation failed\n");
+		return NULL;
+	}
+	return nb;
+}
+
+static struct uk_netbuf *
+carrels_rx_consume_buffer(struct uk_netdev_rx_queue *queue,
+			  const net_buff_desc_t *desc)
+{
+	struct uk_netbuf *nb;
+	uint8_t *src;
+
+	if (unlikely(!carrels_rx_buffer_valid(desc, queue->handle.capacity)))
+		return NULL;
+
+	nb = carrels_rx_alloc_netbuf(queue);
+	if (!nb)
+		return NULL;
+
+	if (unlikely(desc->len > nb->len)) {
+		uk_pr_info(
+			"CARRELS RX: frame %u exceeds capacity %u\n",
+			(unsigned int)desc->len,
+			(unsigned int)nb->len
+		);
+		uk_netbuf_free(nb);
+		return NULL;
+	}
+	nb->len = desc->len;
+
+	// @gt Given that rx_alloc_netbuf will allocate both a buffer descriptor,
+	//     i.e., the uk_netbuf data structure, as well as a rx buffer region,
+	//     We cannot use the buffer region it allocates directly, as the pay-
+	//     load still lives in the sddf I/O queue buffer, making a copy needed.
+	//     However, by changing the hook 'alloc_rxpkts' in the future, we may
+	//     decouple the allocation of desc with the allocation of buffer.
+	src = queue->data + desc->io_or_offset;
+	memcpy(nb->data, src, nb->len);
+	return nb;
+}
+
+static int carrels_rx_dequeue_buffer(struct uk_netdev_rx_queue *queue,
+				    net_buff_desc_t *desc)
+{
+	return net_dequeue_active(&queue->handle, desc);
+}
+
+static void carrels_rx_return_buffer(struct uk_netdev_rx_queue *queue,
+				     net_buff_desc_t desc)
+{
+	desc.len = 0;
+	if (net_enqueue_free(&queue->handle, desc) != 0)
+		UK_CRASH("CARRELS: failed to recycle RX descriptor");
+
+	if (net_require_signal_free(&queue->handle)) {
+		net_cancel_signal_free(&queue->handle);
+		microkit_notify(queue->notify_id);
+	}
+}
+
+static int carrels_rx_has_pending_buffer(struct uk_netdev_rx_queue *queue)
+{
+	return !net_queue_empty_active(&queue->handle);
+}
+
+static int carrels_rx_status(struct uk_netdev_rx_queue *queue,
+			    const struct uk_netbuf *pkt)
+{
+	int stx;
+
+	/* No packet was delivered by this call (invalid frame or netbuf
+	 * allocation failure). Other packets may still be queued. */
+	if (!pkt)
+		return 0;
+
+	stx = UK_NETDEV_STATUS_SUCCESS;
+
+	// More received packets are waiting in the RX queue.
+	if (carrels_rx_has_pending_buffer(queue))
+		stx |= UK_NETDEV_STATUS_MORE;
+
+	return stx;
+}
+
+static int carrels_rx_args_valid(struct uk_netdev *dev,
+				 struct uk_netdev_rx_queue *queue,
+				 struct uk_netbuf **pkt)
+{
+	return dev && queue && pkt &&
+		queue == &to_sddfnet_dev(dev)->rx_queue;
+}
+
+static int
+carrels_netdev_rx_one(struct uk_netdev *dev,
+		      struct uk_netdev_rx_queue *queue,
+		      struct uk_netbuf **pkt)
+{
+	// @gt ?? We use sddf buffer descriptor to describe an available
+	//  network queue rx buffer for the Unikraft netdev. This is not
+	//  clean, as a proper way is to use 'uk_netbuf' directly.
+	//  Try to coordinate the uk_netbuf allocation with the net buf
+	//  allocation process in the future.
+	net_buff_desc_t desc;
+
+	if (unlikely(!carrels_rx_args_valid(dev, queue, pkt)))
+		return 0;
+
+	if (unlikely(carrels_rx_dequeue_buffer(queue, &desc) != 0))
+		return 0;
+
+	*pkt = carrels_rx_consume_buffer(queue, &desc);
+
+	carrels_rx_return_buffer(queue, desc);
+
+	/* Check whether there are more rx packages to handle. */
+	return carrels_rx_status(queue, *pkt);
+}
+
 
 static size_t carrels_netbuf_len(const struct uk_netbuf *pkt)
 {
@@ -263,197 +415,158 @@ static void carrels_netbuf_copy(void *dst, const struct uk_netbuf *pkt)
 	}
 }
 
-static int
-carrels_netdev_rx_one(struct uk_netdev *dev,
-		      struct uk_netdev_rx_queue *queue,
-		      struct uk_netbuf **pkt)
+static int carrels_tx_packet_valid(const struct uk_netbuf *pkt,
+				   size_t *pkt_len)
 {
-	struct carrels_netdev *cdev;
-	struct uk_netbuf *rx_pkts[1] = { NULL };
-	struct uk_netbuf *nb;
-	net_buff_desc_t desc;
-	uint8_t *src;
-	size_t frame_len;
-	uint16_t allocated;
-	int status;
-	int rc;
-
-	if (unlikely(!dev || !queue || !pkt))
+	*pkt_len = carrels_netbuf_len(pkt);
+	if (*pkt_len == 0 || *pkt_len > NET_BUFFER_SIZE) {
+		uk_pr_err("CARRELS: invalid TX packet length %zu\n", *pkt_len);
 		return 0;
-
-	*pkt = NULL;
-	cdev = to_carrels_netdev(dev);
-
-	if (unlikely(queue != &cdev->rx_queue))
-		return 0;
-
-	if (unlikely(!cdev->running))
-		return 0;
-
-	if (net_queue_empty_active(cdev->rxq))
-		return 0;
-
-	rc = net_dequeue_active(cdev->rxq, &desc);
-	if (unlikely(rc != 0))
-		return 0;
-
-	frame_len = desc.len;
-
-	if (unlikely(frame_len < 14 || frame_len > NET_BUFFER_SIZE)) {
-		uk_pr_info("CARRELS RX: invalid frame length %u\n",
-			    (unsigned int)frame_len);
-		goto recycle;
 	}
+	return 1;
+}
 
-	src = (uint8_t *)cdev->config->rx_data.vaddr +
-	      desc.io_or_offset;
+static int carrels_tx_dequeue_buffer(struct uk_netdev_tx_queue *queue,
+				    net_buff_desc_t *desc)
+{
+	if (net_queue_full_active(&queue->handle))
+		return -1;
+	return net_dequeue_free(&queue->handle, desc);
+}
 
-	if (unlikely(!queue->alloc_rxpkts)) {
-		uk_pr_info("CARRELS RX: allocator callback is NULL\n");
-		goto recycle;
+static void carrels_tx_prepare_buffer(struct uk_netdev_tx_queue *queue,
+				      net_buff_desc_t *desc,
+				      const struct uk_netbuf *pkt,
+				      size_t pkt_len)
+{
+	uint8_t *dst;
+
+	UK_ASSERT(desc->io_or_offset % NET_BUFFER_SIZE == 0);
+	UK_ASSERT(desc->io_or_offset <
+		  (uint64_t)queue->handle.capacity * NET_BUFFER_SIZE);
+
+	dst = queue->data + desc->io_or_offset;
+	carrels_netbuf_copy(dst, pkt);
+	desc->len = (uint16_t)pkt_len;
+}
+
+static void carrels_tx_submit_buffer(struct uk_netdev_tx_queue *queue,
+				     net_buff_desc_t desc)
+{
+	/* The active queue has a slot when a free descriptor was dequeued. */
+	if (net_enqueue_active(&queue->handle, desc) != 0)
+		UK_CRASH("CARRELS: failed to submit TX descriptor");
+
+	if (net_require_signal_active(&queue->handle)) {
+		net_cancel_signal_active(&queue->handle);
+		microkit_notify(queue->notify_id);
 	}
+}
 
-	allocated = queue->alloc_rxpkts(
-		queue->alloc_rxpkts_argp,
-		rx_pkts,
-		1
-	);
+static int carrels_tx_has_available_buffer(struct uk_netdev_tx_queue *queue)
+{
+	return !net_queue_empty_free(&queue->handle) &&
+		!net_queue_full_active(&queue->handle);
+}
 
-	if (unlikely(allocated != 1 || !rx_pkts[0])) {
-		uk_pr_info(
-			"CARRELS RX: netbuf allocation failed "
-			"allocated=%u alloc=%p arg=%p\n",
-			allocated,
-			queue->alloc_rxpkts,
-			queue->alloc_rxpkts_argp
-		);
-		goto recycle;
-	}
+static int carrels_tx_status(struct uk_netdev_tx_queue *queue)
+{
+	int status = UK_NETDEV_STATUS_SUCCESS;
 
-	nb = rx_pkts[0];
-
-	if (unlikely(frame_len > nb->len)) {
-		uk_pr_info(
-			"CARRELS RX: frame %u exceeds capacity %u\n",
-			(unsigned int)frame_len,
-			(unsigned int)nb->len
-		);
-		uk_netbuf_free(nb);
-		goto recycle;
-	}
-
-	memcpy(nb->data, src, frame_len);
-	nb->len = frame_len;
-
-	*pkt = nb;
-recycle:
-	desc.len = 0;
-
-	rc = net_enqueue_free(cdev->rxq, desc);
-	if (unlikely(rc != 0))
-		UK_CRASH("CARRELS: failed to recycle RX descriptor");
-
-	if (!*pkt)
-		return 0;
-
-	status = UK_NETDEV_STATUS_SUCCESS;
-
-	if (!net_queue_empty_active(cdev->rxq))
+	if (carrels_tx_has_available_buffer(queue))
 		status |= UK_NETDEV_STATUS_MORE;
-
 	return status;
 }
 
+static int carrels_tx_args_valid(struct uk_netdev *dev,
+				 struct uk_netdev_tx_queue *queue,
+				 struct uk_netbuf *pkt)
+{
+	return dev && queue && pkt &&
+		queue == &to_sddfnet_dev(dev)->tx_queue;
+}
+
+// @gt This function is always next to a 'uk_netbuf_alloc_buf',
+//     which create and allocate both a netbuf + a data region
+//     for the actual data transimission.
+//     However, 'uk_netbuf_alloc_buf' cannot allocate network
+//     buffer that sddf I/O interface can transmit directly,
+//     which causes a data copy between the netbuf and the sddf
+//     I/O tx buffer.
 static int carrels_netdev_tx_one(struct uk_netdev *dev,
 				 struct uk_netdev_tx_queue *queue,
 				 struct uk_netbuf *pkt)
 {
-	struct carrels_netdev *cdev;
 	net_buff_desc_t desc;
-	uint8_t *dst;
 	size_t pkt_len;
-	bool notify;
-	int status;
-	int rc;
 
-	if (unlikely(!dev || !queue || !pkt))
+	if (unlikely(!carrels_tx_args_valid(dev, queue, pkt)))
 		return 0;
 
-	cdev = to_carrels_netdev(dev);
-
-	if (unlikely(queue != &cdev->tx_queue))
+	/* Ensure the whole netbuf chain fits in one sDDF TX buffer. */
+	if (unlikely(!carrels_tx_packet_valid(pkt, &pkt_len)))
 		return 0;
 
-	if (unlikely(!cdev->running))
-		return 0;
-
-	pkt_len = carrels_netbuf_len(pkt);
-
-	if (unlikely(pkt_len == 0 || pkt_len > NET_BUFFER_SIZE)) {
-		uk_pr_err("CARRELS: invalid TX packet length %zu\n", pkt_len);
-		return 0;
+	// @gt The current netbuf data lives outside the sDDF TX data region.
+	//     Take a descriptor from the TX free queue, copy the packet into
+	//     its fixed I/O buffer, then submit that descriptor to the active
+	//     queue. A netbuf backed by the sDDF buffer could avoid this copy.
+	{
+		if (carrels_tx_dequeue_buffer(queue, &desc) != 0)
+			return 0;
+		carrels_tx_prepare_buffer(queue, &desc, pkt, pkt_len);
 	}
-
-	rc = net_dequeue_free(cdev->txq, &desc);
-	if (rc != 0)
-		return 0;
-
-	dst = (uint8_t *)cdev->config->tx_data.vaddr +
-	      desc.io_or_offset;
-
-	carrels_netbuf_copy(dst, pkt);
-
-    desc.len = (uint16_t)pkt_len;
-
-    rc = net_enqueue_active(cdev->txq, desc);
-    if (unlikely(rc != 0)) {
-        rc = net_enqueue_free(cdev->txq, desc);
-        UK_ASSERT(rc == 0);
-        return 0;
-    }
-
-    if (net_require_signal_active(cdev->txq)) {
-        net_cancel_signal_active(cdev->txq);
-        microkit_notify(cdev->config->tx.id);
-
-        uk_pr_info("CARRELS TX: notified channel=%u\n",
-                (unsigned int)cdev->config->tx.id);
-    } else {
-        uk_pr_info("CARRELS TX: notification not requested\n");
-    }
+	carrels_tx_submit_buffer(queue, desc);
 
 	uk_netbuf_free(pkt);
 
-	status = UK_NETDEV_STATUS_SUCCESS;
-
-	if (!net_queue_empty_free(cdev->txq) &&
-	    !net_queue_full_active(cdev->txq))
-		status |= UK_NETDEV_STATUS_MORE;
-
-	return status;
+	return carrels_tx_status(queue);
 }
 
-static int carrels_netdev_queues_init(struct carrels_netdev *dev)
+static int carrels_netdev_queues_init(sddf_netdev_t *dev)
 {
 	const net_client_config_t *cfg = dev->config;
 
 	if (!cfg)
 		return -EINVAL;
 
-	net_queue_init(&dev->rx_handle,
+	net_queue_init(&dev->rx_queue.handle,
 		       cfg->rx.free_queue.vaddr,
 		       cfg->rx.active_queue.vaddr,
 		       cfg->rx.num_buffers);
 
-	net_queue_init(&dev->tx_handle,
+	dev->rx_queue.data = cfg->rx_data.vaddr;
+	dev->rx_queue.notify_id = cfg->rx.id;
+
+	net_queue_init(&dev->tx_queue.handle,
 		       cfg->tx.free_queue.vaddr,
 		       cfg->tx.active_queue.vaddr,
 		       cfg->tx.num_buffers);
 
-	net_buffers_init(&dev->tx_handle, 0);
+	dev->tx_queue.data = cfg->tx_data.vaddr;
+	dev->tx_queue.notify_id = cfg->tx.id;
 
-	dev->rxq = &dev->rx_handle;
-	dev->txq = &dev->tx_handle;
+	net_buffers_init(&dev->tx_queue.handle, 0);
+
+	return 0;
+}
+
+static int carrels_ndetdev_register(sddf_netdev_t *cdev)
+{
+	struct uk_alloc *a;
+	int rc;
+
+	a = uk_alloc_get_default();
+	if (!a) {
+		uk_pr_err("CARRELS: no default allocator for netdev registration\n");
+		return -ENOMEM;
+	}
+
+	rc = uk_netdev_drv_register(&cdev->netdev, a, "uk_netdev_sddf");
+	if (rc < 0) {
+		uk_pr_err("CARRELS: uknetdev registration failed: %d\n", rc);
+		return rc;
+	}
 
 	return 0;
 }
@@ -468,26 +581,25 @@ static const struct uk_netdev_ops carrels_netdev_ops = {
 	.info_get = carrels_netdev_info_get,
 	.rxq_info_get = carrels_netdev_rxq_info_get,
 	.txq_info_get = carrels_netdev_txq_info_get,
-
+	// @gt ?? set the values below are optional (and in fact most Nil),
+	//        so similarly we disable mac/mtu/promisc set for sddf too.
 	.hwaddr_get = carrels_netdev_hwaddr_get,
 	.mtu_get = carrels_netdev_mtu_get,
-	.promiscuous_get = carrels_netdev_promiscuous_get,
-};
-
-static struct carrels_netdev carrels_dev = {
-	.config = &net_config,
+	.promiscuous_get = carrels_netdev_promisc_get,
 };
 
 static int carrels_netdev_init(void)
 {
-	struct uk_alloc *a;
-	struct carrels_netdev *cdev = &carrels_dev;
+	sddf_netdev_t *cdev = &carrels_dev;
 	int rc;
 
 	memset(cdev, 0, sizeof(*cdev));
 
+	if (!net_config_check_magic(&net_config)) {
+		uk_pr_err("CARRELS: invalid sDDF network configuration\n");
+		return -EINVAL;
+	}
 	cdev->config = &net_config;
-	cdev->mtu = CARRELS_NETDEV_MTU;
 
 	rc = carrels_netdev_queues_init(cdev);
 	if (rc < 0) {
@@ -495,43 +607,34 @@ static int carrels_netdev_init(void)
 		return rc;
 	}
 
+	/* Use the mac address provided by sddf netdev */
 	memcpy(cdev->hwaddr.addr_bytes,
 	       cdev->config->mac_addr.addr,
 	       UK_NETDEV_HWADDR_LEN);
 
+	/* Bind sddf network dev with Unikraft's driver framework */
 	cdev->netdev.rx_one = carrels_netdev_rx_one;
 	cdev->netdev.tx_one = carrels_netdev_tx_one;
 	cdev->netdev.ops = &carrels_netdev_ops;
 
-	a = uk_alloc_get_default();
-	if (!a) {
-		uk_pr_err("CARRELS: no default allocator for netdev registration\n");
-		return -ENOMEM;
-	}
+	// @gt ?? default=1500, which equals to what's provided by lwip
+	//        in sddf other network drivers of unikraft have examples
+	//        that is also 1500, so set it the way they are.
+	// Ref: $(SDDF)/include/sddf/network/lib_sddf_lwip.h: 16
+	cdev->mtu = UK_ETH_PAYLOAD_MAXLEN;
+	// @gt :: sddf network driver support promiscuous mode by default,
+	//        however, this promiscuous mode field is for the network
+	//        stack inside the unikernel, which is a client to the sddf
+	//        network subsystem that sees the client as an individual
+	//        network stack using a fixed, virtualised mac address.
+	//        So, just disable this promisc mode for within the unikernel
+	// Ref: other unikraft network drivers (Xen, virtio-net)
+	cdev->promisc = 0;
 
-	rc = uk_netdev_drv_register(&cdev->netdev,
-				    a,
-				    CARRELS_NETDEV_DRIVER_NAME);
+	rc = carrels_ndetdev_register(cdev);
 	if (rc < 0) {
-		uk_pr_err("CARRELS: uknetdev registration failed: %d\n", rc);
 		return rc;
 	}
-
-	cdev->id = rc;
-
-	uk_pr_info(
-		"CARRELS: registered sDDF netdev id=%d "
-		"MAC=%02x:%02x:%02x:%02x:%02x:%02x "
-		"RX buffers=%u TX buffers=%u\n",
-		cdev->id,
-		cdev->hwaddr.addr_bytes[0],
-		cdev->hwaddr.addr_bytes[1],
-		cdev->hwaddr.addr_bytes[2],
-		cdev->hwaddr.addr_bytes[3],
-		cdev->hwaddr.addr_bytes[4],
-		cdev->hwaddr.addr_bytes[5],
-		(unsigned int)cdev->rxq->capacity,
-		(unsigned int)cdev->txq->capacity);
 
 	return 0;
 }
