@@ -279,42 +279,6 @@ carrels_rx_alloc_netbuf(struct uk_netdev_rx_queue *queue)
 	return nb;
 }
 
-static struct uk_netbuf *
-carrels_rx_consume_buffer(struct uk_netdev_rx_queue *queue,
-			  const net_buff_desc_t *desc)
-{
-	struct uk_netbuf *nb;
-	uint8_t *src;
-
-	if (unlikely(!carrels_rx_buffer_valid(desc, queue->handle.capacity)))
-		return NULL;
-
-	nb = carrels_rx_alloc_netbuf(queue);
-	if (!nb)
-		return NULL;
-
-	if (unlikely(desc->len > nb->len)) {
-		uk_pr_info(
-			"CARRELS RX: frame %u exceeds capacity %u\n",
-			(unsigned int)desc->len,
-			(unsigned int)nb->len
-		);
-		uk_netbuf_free(nb);
-		return NULL;
-	}
-	nb->len = desc->len;
-
-	// @gt Given that rx_alloc_netbuf will allocate both a buffer descriptor,
-	//     i.e., the uk_netbuf data structure, as well as a rx buffer region,
-	//     We cannot use the buffer region it allocates directly, as the pay-
-	//     load still lives in the sddf I/O queue buffer, making a copy needed.
-	//     However, by changing the hook 'alloc_rxpkts' in the future, we may
-	//     decouple the allocation of desc with the allocation of buffer.
-	src = queue->data + desc->io_or_offset;
-	memcpy(nb->data, src, nb->len);
-	return nb;
-}
-
 static int carrels_rx_dequeue_buffer(struct uk_netdev_rx_queue *queue,
 				    net_buff_desc_t *desc)
 {
@@ -332,6 +296,86 @@ static void carrels_rx_return_buffer(struct uk_netdev_rx_queue *queue,
 		net_cancel_signal_free(&queue->handle);
 		microkit_notify(queue->notify_id);
 	}
+}
+
+static void carrels_rx_netbuf_dtor(struct uk_netbuf *nb)
+{
+	/* This driver currently registers one sDDF network client. */
+	struct uk_netdev_rx_queue *queue = &carrels_dev.rx_queue;
+	uintptr_t base = (uintptr_t)queue->data;
+	uintptr_t addr = (uintptr_t)nb->buf;
+	net_buff_desc_t desc = { 0 };
+
+	UK_ASSERT(addr >= base);
+	UK_ASSERT(addr - base <
+		  (uintptr_t)queue->handle.capacity * NET_BUFFER_SIZE);
+	UK_ASSERT((addr - base) % NET_BUFFER_SIZE == 0);
+
+	desc.io_or_offset = addr - base;
+
+	carrels_rx_return_buffer(queue, desc);
+}
+
+static void carrels_rx_bind_netbuf(struct uk_netbuf *nb, void *buf,
+				  uint16_t frame_len)
+{
+	nb->buf = buf;
+	nb->data = buf;
+	nb->buflen = NET_BUFFER_SIZE;
+	nb->len = frame_len;
+	nb->dtor = carrels_rx_netbuf_dtor;
+}
+
+static struct uk_netbuf *
+carrels_rx_consume_buffer(struct uk_netdev_rx_queue *queue,
+			  const net_buff_desc_t *desc, int *loaned)
+{
+	struct uk_netbuf *nb;
+	uint8_t *src;
+
+	/* Mark the netbuf state */
+	*loaned = 0;
+
+	if (unlikely(!carrels_rx_buffer_valid(desc, queue->handle.capacity)))
+		return NULL;
+
+	nb = carrels_rx_alloc_netbuf(queue);
+	if (!nb)
+		return NULL;
+
+	src = queue->data + desc->io_or_offset;
+
+	// @gt We use (void *data) in 'uk_netbuf' to denote the state of whether
+	//     the netbuf is allocated with a rx buffer already or not.
+	//     Zero (NULL) means the netbuf is descriptor only, and we can avoid
+	//     an additional copy below.
+	if (!nb->data) {
+		if (unlikely(nb->buf || nb->buflen || nb->dtor)) {
+			uk_netbuf_free(nb);
+			return NULL;
+		}
+		/* The descriptor remains owned by this netbuf until its dtor. */
+		carrels_rx_bind_netbuf(nb, src, desc->len);
+		/* The netbuf points to sddf I/O buffer directly. */
+		*loaned = 1;
+		return nb;
+	}
+
+	// @gt Unfortunately, the alloc_rxpkt() returns with a rx buffer allocated,
+	//     which means we will perform a data copy between the rx buffer of
+	//     sddf and the rx buffer of uk_netbuf.
+	if (unlikely(desc->len > nb->len)) {
+		uk_pr_info(
+			"CARRELS RX: frame %u exceeds capacity %u\n",
+			(unsigned int)desc->len,
+			(unsigned int)nb->len
+		);
+		uk_netbuf_free(nb);
+		return NULL;
+	}
+	nb->len = desc->len;
+	memcpy(nb->data, src, nb->len);
+	return nb;
 }
 
 static int carrels_rx_has_pending_buffer(struct uk_netdev_rx_queue *queue)
@@ -378,15 +422,20 @@ carrels_netdev_rx_one(struct uk_netdev *dev,
 	//  allocation process in the future.
 	net_buff_desc_t desc;
 
+	/* If set, the netbuf borrows the sDDF RX buffer and its destructor
+	 * returns the descriptor to the free queue. */
+	int loaned;
+
 	if (unlikely(!carrels_rx_args_valid(dev, queue, pkt)))
 		return 0;
 
 	if (unlikely(carrels_rx_dequeue_buffer(queue, &desc) != 0))
 		return 0;
 
-	*pkt = carrels_rx_consume_buffer(queue, &desc);
+	*pkt = carrels_rx_consume_buffer(queue, &desc, &loaned);
 
-	carrels_rx_return_buffer(queue, desc);
+	if (!loaned)
+		carrels_rx_return_buffer(queue, desc);
 
 	/* Check whether there are more rx packages to handle. */
 	return carrels_rx_status(queue, *pkt);
