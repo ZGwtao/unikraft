@@ -518,6 +518,39 @@ static inline int uk_netdev_rx_one(struct uk_netdev *dev, uint16_t queue_id,
 }
 
 /**
+ * Allocate a TX netbuf backed by storage supplied by the device queue
+ *
+ * @param dev
+ *   The Unikraft Network Device.
+ * @param queue_id
+ *   The index of the transmit queue to allocate from.
+ * @param capacity
+ *   Minimum required data buffer capacity in bytes.
+ * @param headroom
+ *   Number of bytes reserved before the packet data.
+ * @return
+ *   - (struct uk_netbuf *): Allocated netbuf. The caller owns it until TX
+ *     succeeds; freeing it before TX releases the reserved storage.
+ *   - (NULL): The driver does not support queue-backed TX buffers or no
+ *     buffer is available.
+ */
+static inline struct uk_netbuf *uk_netdev_tx_buf_alloc(struct uk_netdev *dev,
+		uint16_t queue_id, size_t capacity, uint16_t headroom)
+{
+	UK_ASSERT(dev);
+	UK_ASSERT(queue_id < CONFIG_LIBUKNETDEV_MAXNBQUEUES);
+	UK_ASSERT(dev->_data->state == UK_NETDEV_RUNNING);
+	UK_ASSERT(dev->_tx_queue[queue_id] &&
+		  !PTRISERR(dev->_tx_queue[queue_id]));
+
+	if (!dev->tx_buf_alloc)
+		return NULL;
+
+	return dev->tx_buf_alloc(dev, dev->_tx_queue[queue_id],
+				 capacity, headroom);
+}
+
+/**
  * Transmit one packet
  *
  * @param dev

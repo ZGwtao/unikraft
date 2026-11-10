@@ -293,10 +293,34 @@ struct uk_netdev_rxqueue_conf {
 };
 
 /**
+ * User callback used by the driver to allocate a TX netbuf whose data area
+ * is supplied by the driver.
+ *
+ * @param argp
+ *   User-provided argument.
+ * @param data
+ *   Start address of the driver-provided data area.
+ * @param capacity
+ *   Size of the data area in bytes.
+ * @param headroom
+ *   Number of bytes reserved before the packet data.
+ * @param dtor
+ *   Destructor that releases the driver's reference to the data area.
+ * @return
+ *   Allocated netbuf referencing the data area, or NULL on failure.
+ */
+typedef struct uk_netbuf *(*uk_netdev_alloc_txbuf)(void *argp, void *data,
+					 size_t capacity, uint16_t headroom,
+					 uk_netbuf_dtor_t dtor);
+
+/**
  * A structure used to configure an Unikraft network device TX queue.
  */
 struct uk_netdev_txqueue_conf {
 	struct uk_alloc *a;               /* Allocator for descriptors. */
+	/* Stack-provided metadata allocator for driver-owned TX data. */
+	uk_netdev_alloc_txbuf alloc_txbuf;
+	void *alloc_txbuf_argp;
 };
 
 /** Driver callback type to probe device capabilities and features (optional)
@@ -393,6 +417,11 @@ typedef int (*uk_netdev_rx_one_t)(struct uk_netdev *dev,
 typedef int (*uk_netdev_tx_one_t)(struct uk_netdev *dev,
 				  struct uk_netdev_tx_queue *queue,
 				  struct uk_netbuf *pkt);
+
+/** Driver callback type to allocate a TX netbuf backed by queue storage. */
+typedef struct uk_netbuf *(*uk_netdev_tx_buf_alloc_t)(
+	struct uk_netdev *dev, struct uk_netdev_tx_queue *queue,
+	size_t capacity, uint16_t headroom);
 
 /**
  * A structure containing the functions exported by a driver.
@@ -509,6 +538,8 @@ struct uk_netdev_stats {
 struct uk_netdev {
 	/** Packet transmission. */
 	uk_netdev_tx_one_t          tx_one; /* by driver */
+	/** Optional queue-backed TX buffer allocation. */
+	uk_netdev_tx_buf_alloc_t    tx_buf_alloc; /* by driver */
 
 	/** Packet reception. */
 	uk_netdev_rx_one_t          rx_one; /* by driver */
