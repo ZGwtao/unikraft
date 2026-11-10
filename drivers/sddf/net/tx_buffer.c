@@ -246,6 +246,9 @@ struct uk_netbuf *carrels_tx_alloc(struct uk_netdev_tx_queue *queue,
 	    carrels_tx_dequeue_buffer(&desc) != 0)
 		return NULL;
 
+	// Use the allocated TX buffer (from the tx_ready_queue) to bind with
+	// the upcoming netbuf, which should be allocated by the callback.
+	// Base address of the TX buffer is represented by "queue->data + desc offset"
 	nb = queue->alloc_txbuf(queue->alloc_txbuf_argp,
 				queue->data + desc.io_or_offset,
 				NET_BUFFER_SIZE, headroom, tx_loan_dtor);
