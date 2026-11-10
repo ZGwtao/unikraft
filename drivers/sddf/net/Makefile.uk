@@ -4,4 +4,5 @@ $(eval $(call addlib_s,libsddfnet,$(CONFIG_DRIVER_NET_SDDF)))
 
 LIBSDDFNET_SRCS-y += \
 	$(LIBSDDFNET_BASE)/netdev.c \
-	$(LIBSDDFNET_BASE)/rx_buffer.c
+	$(LIBSDDFNET_BASE)/rx_buffer.c \
+	$(LIBSDDFNET_BASE)/tx_buffer.c

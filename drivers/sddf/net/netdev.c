@@ -21,12 +21,6 @@ UK_CTASSERT(MAC802_BYTES == UK_NETDEV_HWADDR_LEN);
 
 extern net_client_config_t net_config;
 
-struct uk_netdev_tx_queue {
-	net_queue_handle_t handle;
-	uint8_t *data;
-	microkit_channel notify_id;
-};
-
 typedef struct sddf_netdev {
 	/* handle of the unikraft's network device */
 	struct uk_netdev netdev;
@@ -274,17 +268,6 @@ static size_t carrels_netbuf_len(const struct uk_netbuf *pkt)
 	return total;
 }
 
-static void carrels_netbuf_copy(void *dst, const struct uk_netbuf *pkt)
-{
-	const struct uk_netbuf *seg;
-	uint8_t *cursor = dst;
-
-	for (seg = pkt; seg != NULL; seg = seg->next) {
-		memcpy(cursor, seg->data, seg->len);
-		cursor += seg->len;
-	}
-}
-
 static int carrels_tx_packet_valid(const struct uk_netbuf *pkt,
 				   size_t *pkt_len)
 {
@@ -296,54 +279,11 @@ static int carrels_tx_packet_valid(const struct uk_netbuf *pkt,
 	return 1;
 }
 
-static int carrels_tx_dequeue_buffer(struct uk_netdev_tx_queue *queue,
-				    net_buff_desc_t *desc)
-{
-	if (net_queue_full_active(&queue->handle))
-		return -1;
-	return net_dequeue_free(&queue->handle, desc);
-}
-
-static void carrels_tx_prepare_buffer(struct uk_netdev_tx_queue *queue,
-				      net_buff_desc_t *desc,
-				      const struct uk_netbuf *pkt,
-				      size_t pkt_len)
-{
-	uint8_t *dst;
-
-	UK_ASSERT(desc->io_or_offset % NET_BUFFER_SIZE == 0);
-	UK_ASSERT(desc->io_or_offset <
-		  (uint64_t)queue->handle.capacity * NET_BUFFER_SIZE);
-
-	dst = queue->data + desc->io_or_offset;
-	carrels_netbuf_copy(dst, pkt);
-	desc->len = (uint16_t)pkt_len;
-}
-
-static void carrels_tx_submit_buffer(struct uk_netdev_tx_queue *queue,
-				     net_buff_desc_t desc)
-{
-	/* The active queue has a slot when a free descriptor was dequeued. */
-	if (net_enqueue_active(&queue->handle, desc) != 0)
-		UK_CRASH("CARRELS: failed to submit TX descriptor");
-
-	if (net_require_signal_active(&queue->handle)) {
-		net_cancel_signal_active(&queue->handle);
-		microkit_notify(queue->notify_id);
-	}
-}
-
-static int carrels_tx_has_available_buffer(struct uk_netdev_tx_queue *queue)
-{
-	return !net_queue_empty_free(&queue->handle) &&
-		!net_queue_full_active(&queue->handle);
-}
-
 static int carrels_tx_status(struct uk_netdev_tx_queue *queue)
 {
 	int status = UK_NETDEV_STATUS_SUCCESS;
 
-	if (carrels_tx_has_available_buffer(queue))
+	if (carrels_tx_has_available(queue))
 		status |= UK_NETDEV_STATUS_MORE;
 	return status;
 }
@@ -367,7 +307,6 @@ static int carrels_netdev_tx_one(struct uk_netdev *dev,
 				 struct uk_netdev_tx_queue *queue,
 				 struct uk_netbuf *pkt)
 {
-	net_buff_desc_t desc;
 	size_t pkt_len;
 
 	if (unlikely(!carrels_tx_args_valid(dev, queue, pkt)))
@@ -377,16 +316,8 @@ static int carrels_netdev_tx_one(struct uk_netdev *dev,
 	if (unlikely(!carrels_tx_packet_valid(pkt, &pkt_len)))
 		return 0;
 
-	// @gt The current netbuf data lives outside the sDDF TX data region.
-	//     Take a descriptor from the TX free queue, copy the packet into
-	//     its fixed I/O buffer, then submit that descriptor to the active
-	//     queue. A netbuf backed by the sDDF buffer could avoid this copy.
-	{
-		if (carrels_tx_dequeue_buffer(queue, &desc) != 0)
-			return 0;
-		carrels_tx_prepare_buffer(queue, &desc, pkt, pkt_len);
-	}
-	carrels_tx_submit_buffer(queue, desc);
+	if (!carrels_tx_send_copy(queue, pkt, pkt_len))
+		return 0;
 
 	uk_netbuf_free(pkt);
 
