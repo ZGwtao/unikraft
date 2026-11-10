@@ -200,6 +200,9 @@ carrels_netdev_txq_configure(struct uk_netdev *dev,
 					    cdev->tx_queue.handle.capacity))
 		return ERR2PTR(-EINVAL);
 
+	cdev->tx_queue.alloc_txbuf = conf->alloc_txbuf;
+	cdev->tx_queue.alloc_txbuf_argp = conf->alloc_txbuf_argp;
+
 	return &cdev->tx_queue;
 }
 
@@ -279,6 +282,7 @@ static int carrels_tx_packet_valid(const struct uk_netbuf *pkt,
 	return 1;
 }
 
+/* Report whether another TX buffer is available after this send. */
 static int carrels_tx_status(struct uk_netdev_tx_queue *queue)
 {
 	int status = UK_NETDEV_STATUS_SUCCESS;
@@ -286,6 +290,14 @@ static int carrels_tx_status(struct uk_netdev_tx_queue *queue)
 	if (carrels_tx_has_available(queue))
 		status |= UK_NETDEV_STATUS_MORE;
 	return status;
+}
+
+static struct uk_netbuf *carrels_netdev_tx_buf_alloc(struct uk_netdev *dev,
+		struct uk_netdev_tx_queue *queue, size_t capacity,
+		uint16_t headroom)
+{
+	(void)dev;
+	return carrels_tx_alloc(queue, capacity, headroom);
 }
 
 static int carrels_tx_args_valid(struct uk_netdev *dev,
@@ -296,18 +308,12 @@ static int carrels_tx_args_valid(struct uk_netdev *dev,
 		queue == &to_sddfnet_dev(dev)->tx_queue;
 }
 
-// @gt This function is always next to a 'uk_netbuf_alloc_buf',
-//     which create and allocate both a netbuf + a data region
-//     for the actual data transimission.
-//     However, 'uk_netbuf_alloc_buf' cannot allocate network
-//     buffer that sddf I/O interface can transmit directly,
-//     which causes a data copy between the netbuf and the sddf
-//     I/O tx buffer.
 static int carrels_netdev_tx_one(struct uk_netdev *dev,
 				 struct uk_netdev_tx_queue *queue,
 				 struct uk_netbuf *pkt)
 {
 	size_t pkt_len;
+	enum carrels_tx_loan_result loan_result;
 
 	if (unlikely(!carrels_tx_args_valid(dev, queue, pkt)))
 		return 0;
@@ -316,7 +322,13 @@ static int carrels_netdev_tx_one(struct uk_netdev *dev,
 	if (unlikely(!carrels_tx_packet_valid(pkt, &pkt_len)))
 		return 0;
 
-	if (!carrels_tx_send_copy(queue, pkt, pkt_len))
+	/* Use the copy path only for a netbuf outside the sDDF TX region. */
+	loan_result = carrels_tx_send_loan(queue, pkt, pkt_len);
+	if (loan_result == CARRELS_TX_LOAN_REJECTED)
+		return 0;
+
+	if (loan_result == CARRELS_TX_COPY_REQUIRED &&
+	    !carrels_tx_send_copy(queue, pkt, pkt_len))
 		return 0;
 
 	uk_netbuf_free(pkt);
@@ -349,6 +361,9 @@ static int carrels_netdev_queues_init(sddf_netdev_t *dev)
 	dev->tx_queue.notify_id = cfg->tx.id;
 
 	net_buffers_init(&dev->tx_queue.handle, 0);
+
+	if (carrels_tx_init(&dev->tx_queue) != 0)
+		return -EINVAL;
 
 	return 0;
 }
@@ -417,6 +432,7 @@ static int carrels_netdev_init(void)
 	/* Bind sddf network dev with Unikraft's driver framework */
 	cdev->netdev.rx_one = carrels_netdev_rx_one;
 	cdev->netdev.tx_one = carrels_netdev_tx_one;
+	cdev->netdev.tx_buf_alloc = carrels_netdev_tx_buf_alloc;
 	cdev->netdev.ops = &carrels_netdev_ops;
 
 	// @gt ?? default=1500, which equals to what's provided by lwip
